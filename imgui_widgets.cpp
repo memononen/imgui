@@ -1751,7 +1751,7 @@ void ImGui::SeparatorTextEx(ImGuiID id, const char* label, const char* label_end
 
     const float sep1_x1 = pos.x;
     const float sep2_x2 = bb.Max.x;
-    const float seps_y = ImTrunc((bb.Min.y + bb.Max.y) * 0.5f + (separator_thickness * 0.5f + 1.f) + 0.99999f); // Align hline vertically, and snap to pixels.
+    const float seps_y = ImTrunc((bb.Min.y + bb.Max.y) * 0.5f + (-separator_thickness * 0.5f + 1.f) + 0.99999f); // Align hline vertically, and snap to pixels.
 
     const float label_avail_w = ImMax(0.0f, sep2_x2 - sep1_x1 - padding.x * 2.0f);
     const ImVec2 label_pos(pos.x + padding.x + ImMax(0.0f, (label_avail_w - label_size.x - extra_w) * style.SeparatorTextAlign.x), pos.y + text_baseline_y); // FIXME-ALIGN
