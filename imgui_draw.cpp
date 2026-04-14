@@ -105,7 +105,7 @@ namespace IMGUI_STB_NAMESPACE
 #pragma warning (push)
 #pragma warning (disable: 4456)                             // declaration of 'xx' hides previous local declaration
 #pragma warning (disable: 6011)                             // (stb_rectpack) Dereferencing NULL pointer 'cur->next'.
-#pragma warning (disable: 5262)                             // (stb_truetype) implicit fall-through occurs here; are you missing a break statement? 
+#pragma warning (disable: 5262)                             // (stb_truetype) implicit fall-through occurs here; are you missing a break statement?
 #pragma warning (disable: 6385)                             // (stb_truetype) Reading invalid data from 'buffer':  the readable size is '_Old_3`kernel_width' bytes, but '3' bytes may be read.
 #pragma warning (disable: 28182)                            // (stb_rectpack) Dereferencing NULL pointer. 'cur' contains the same NULL value as 'cur->next' did.
 #endif
@@ -1474,9 +1474,19 @@ void ImDrawList::AddLine(const ImVec2& p1, const ImVec2& p2, ImU32 col, float th
 {
     if ((col & IM_COL32_A_MASK) == 0)
         return;
-    PathLineTo(p1 + ImVec2(0.5f, 0.5f));
-    PathLineTo(p2 + ImVec2(0.5f, 0.5f));
+    PathLineTo(p1);
+    PathLineTo(p2);
     PathStroke(col, 0, thickness);
+}
+
+void ImDrawList::AddHorizontalLine(float min_x, float max_x, float y, ImU32 col, float thickness)
+{
+    AddLine(ImVec2(min_x, y + thickness*0.5f), ImVec2(max_x, y + thickness*0.5f), col, thickness);
+}
+
+void ImDrawList::AddVerticalLine(float x, float min_y, float max_y, ImU32 col, float thickness)
+{
+    AddLine(ImVec2(x + thickness*0.5f, min_y), ImVec2(x + thickness*0.5f, max_y), col, thickness);
 }
 
 // p_min = upper-left, p_max = lower-right
