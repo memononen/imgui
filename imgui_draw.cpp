@@ -1479,14 +1479,24 @@ void ImDrawList::AddLine(const ImVec2& p1, const ImVec2& p2, ImU32 col, float th
     PathStroke(col, 0, thickness);
 }
 
-void ImDrawList::AddHorizontalLine(float min_x, float max_x, float y, ImU32 col, float thickness)
+void ImDrawList::AddHorizontalLine(float min_x, float max_x, float y, ImU32 col, float thickness, ImDrawStrokePos stroke_pos)
 {
-    AddLine(ImVec2(min_x, y + thickness*0.5f), ImVec2(max_x, y + thickness*0.5f), col, thickness);
+    float offset = 0.f;
+    if (stroke_pos == ImDrawStrokePos_Inside)
+        offset += thickness*0.5f;
+    else if (stroke_pos == ImDrawStrokePos_Outside)
+        offset -= thickness*0.5f;
+    AddLine(ImVec2(min_x, y + offset), ImVec2(max_x, y + offset), col, thickness);
 }
 
-void ImDrawList::AddVerticalLine(float x, float min_y, float max_y, ImU32 col, float thickness)
+void ImDrawList::AddVerticalLine(float x, float min_y, float max_y, ImU32 col, float thickness, ImDrawStrokePos stroke_pos)
 {
-    AddLine(ImVec2(x + thickness*0.5f, min_y), ImVec2(x + thickness*0.5f, max_y), col, thickness);
+    float offset = 0.f;
+    if (stroke_pos == ImDrawStrokePos_Inside)
+        offset += thickness*0.5f;
+    else if (stroke_pos == ImDrawStrokePos_Outside)
+        offset -= thickness*0.5f;
+    AddLine(ImVec2(x + offset, min_y), ImVec2(x + offset, max_y), col, thickness);
 }
 
 // p_min = upper-left, p_max = lower-right
