@@ -1479,24 +1479,56 @@ void ImDrawList::AddLine(const ImVec2& p1, const ImVec2& p2, ImU32 col, float th
     PathStroke(col, 0, thickness);
 }
 
-void ImDrawList::AddHorizontalLine(float min_x, float max_x, float y, ImU32 col, float thickness, ImDrawStrokePos stroke_pos)
+void ImDrawList::AddHorizontalLine(float min_x, float max_x, float y, ImU32 col, ImDrawFlags flags, float thickness, ImDrawStrokePos stroke_pos)
 {
-    float offset = 0.f;
-    if (stroke_pos == ImDrawStrokePos_Inside)
-        offset += thickness*0.5f;
-    else if (stroke_pos == ImDrawStrokePos_Outside)
-        offset -= thickness*0.5f;
-    AddLine(ImVec2(min_x, y + offset), ImVec2(max_x, y + offset), col, thickness);
+    const bool allow_trunc = ImGui::GetIO().KeyShift;
+
+    if (allow_trunc && (flags & ImDrawFlags_TruncateCoords))
+    {
+        thickness = ImTrunc(thickness);
+        float offset = 0.f;
+        if (stroke_pos == ImDrawStrokePos_Center)
+            offset -= ImTrunc(thickness*0.5f);
+        else if (stroke_pos == ImDrawStrokePos_Outside)
+            offset -= thickness;
+        PrimReserve(6, 4);
+        PrimRect(ImTrunc(ImVec2(min_x, y + offset)), ImTrunc(ImVec2(max_x, y + offset + thickness)), col);
+    }
+    else
+    {
+        float offset = 0.f;
+        if (stroke_pos == ImDrawStrokePos_Inside)
+            offset += thickness*0.5f;
+        else if (stroke_pos == ImDrawStrokePos_Outside)
+            offset -= thickness*0.5f;
+        AddLine(ImVec2(min_x, y + offset), ImVec2(max_x, y + offset), col, thickness);
+    }
 }
 
-void ImDrawList::AddVerticalLine(float x, float min_y, float max_y, ImU32 col, float thickness, ImDrawStrokePos stroke_pos)
+void ImDrawList::AddVerticalLine(float x, float min_y, float max_y, ImU32 col, ImDrawFlags flags, float thickness, ImDrawStrokePos stroke_pos)
 {
-    float offset = 0.f;
-    if (stroke_pos == ImDrawStrokePos_Inside)
-        offset += thickness*0.5f;
-    else if (stroke_pos == ImDrawStrokePos_Outside)
-        offset -= thickness*0.5f;
-    AddLine(ImVec2(x + offset, min_y), ImVec2(x + offset, max_y), col, thickness);
+    const bool allow_trunc = ImGui::GetIO().KeyShift;
+
+    if (allow_trunc && (flags & ImDrawFlags_TruncateCoords))
+    {
+        thickness = ImTrunc(thickness);
+        float offset = 0.f;
+        if (stroke_pos == ImDrawStrokePos_Center)
+            offset -= ImTrunc(thickness*0.5f);
+        else if (stroke_pos == ImDrawStrokePos_Outside)
+            offset -= thickness;
+        PrimReserve(6, 4);
+        PrimRect(ImTrunc(ImVec2(x + offset, min_y)), ImTrunc(ImVec2(x + offset + thickness, max_y)), col);
+    }
+    else
+    {
+        float offset = 0.f;
+        if (stroke_pos == ImDrawStrokePos_Inside)
+            offset += thickness*0.5f;
+        else if (stroke_pos == ImDrawStrokePos_Outside)
+            offset -= thickness*0.5f;
+        AddLine(ImVec2(x + offset, min_y), ImVec2(x + offset, max_y), col, thickness);
+    }
 }
 
 // p_min = upper-left, p_max = lower-right
@@ -1520,18 +1552,91 @@ void ImDrawList::AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, fl
             PathRect(p_min + ImVec2(0.50f, 0.50f), p_max - ImVec2(0.49f, 0.49f), rounding, flags); // Better looking lower-right corner and rounded non-AA shapes.
     }
 
-
     PathStroke(col, ImDrawFlags_Closed, thickness);
+}
+
+void ImDrawList::_AddMirrored9Slice(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float r, ImVec4 tex_uvs, ImDrawFlags flags)
+{
+    // 9-slice with corner mirroring
+    const ImVec2 uv_tl(tex_uvs.x, tex_uvs.y);
+    const ImVec2 uv_tr(tex_uvs.z, tex_uvs.y);
+    const ImVec2 uv_br(tex_uvs.z, tex_uvs.w);
+    const ImVec2 uv_bl(tex_uvs.x, tex_uvs.w);
+
+    PrimReserve(9 * 2 * 3, 4 * 4);
+
+    const float r_tl = (flags & ImDrawFlags_RoundCornersTopLeft)     ? r : 0.0f;
+    const float r_tr = (flags & ImDrawFlags_RoundCornersTopRight)    ? r : 0.0f;
+    const float r_br = (flags & ImDrawFlags_RoundCornersBottomRight) ? r : 0.0f;
+    const float r_bl = (flags & ImDrawFlags_RoundCornersBottomLeft)  ? r : 0.0f;
+
+    ImDrawIdx idx = (ImDrawIdx)_VtxCurrentIdx;
+
+    PrimWriteVtx(ImVec2(p_min.x, p_min.y), uv_tl, col);
+    PrimWriteVtx(ImVec2(p_min.x + r_tl, p_min.y), uv_tr, col);
+    PrimWriteVtx(ImVec2(p_max.x - r_tr, p_min.y), uv_tr, col);
+    PrimWriteVtx(ImVec2(p_max.x, p_min.y), uv_tl, col);
+
+    PrimWriteVtx(ImVec2(p_min.x, p_min.y + r_tl), uv_bl, col);
+    PrimWriteVtx(ImVec2(p_min.x + r_tl, p_min.y + r_tl), uv_br, col);
+    PrimWriteVtx(ImVec2(p_max.x - r_tr, p_min.y + r_tr), uv_br, col);
+    PrimWriteVtx(ImVec2(p_max.x, p_min.y + r_tr), uv_bl, col);
+
+    PrimWriteVtx(ImVec2(p_min.x, p_max.y - r_bl), uv_bl, col);
+    PrimWriteVtx(ImVec2(p_min.x + r_bl, p_max.y - r_bl), uv_br, col);
+    PrimWriteVtx(ImVec2(p_max.x - r_br, p_max.y - r_br), uv_br, col);
+    PrimWriteVtx(ImVec2(p_max.x, p_max.y - r_br), uv_bl, col);
+
+    PrimWriteVtx(ImVec2(p_min.x, p_max.y), uv_tl, col);
+    PrimWriteVtx(ImVec2(p_min.x + r_bl, p_max.y), uv_tr, col);
+    PrimWriteVtx(ImVec2(p_max.x - r_br, p_max.y ), uv_tr, col);
+    PrimWriteVtx(ImVec2(p_max.x, p_max.y), uv_tl, col);
+
+    for (int i = 0; i < 3; i++)
+    {
+        for (int j = 0; j < 3; j++)
+        {
+            PrimWriteIdx(idx+4); PrimWriteIdx(idx+0); PrimWriteIdx(idx+1);
+            PrimWriteIdx(idx+4); PrimWriteIdx(idx+1); PrimWriteIdx(idx+5);
+            idx++;
+        }
+        idx++;
+    }
 }
 
 void ImDrawList::AddRectFilled(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding, ImDrawFlags flags)
 {
     if ((col & IM_COL32_A_MASK) == 0)
         return;
-    if (rounding < 0.5f || (flags & ImDrawFlags_RoundCornersMask_) == ImDrawFlags_RoundCornersNone)
+
+    const bool allow_trunc = ImGui::GetIO().KeyShift;
+
+    if (allow_trunc && (flags & ImDrawFlags_TruncateCoords))
     {
-        PrimReserve(6, 4);
-        PrimRect(p_min, p_max, col);
+        if ((flags & ImDrawFlags_RoundCornersMask_) == 0)
+            flags |= ImDrawFlags_RoundCornersAll;
+
+        rounding = ImMin(rounding, ImFabs(p_max.x - p_min.x) * (((flags & ImDrawFlags_RoundCornersTop) == ImDrawFlags_RoundCornersTop) || ((flags & ImDrawFlags_RoundCornersBottom) == ImDrawFlags_RoundCornersBottom) ? 0.5f : 1.0f) - 1.0f);
+        rounding = ImMin(rounding, ImFabs(p_max.y - p_min.y) * (((flags & ImDrawFlags_RoundCornersLeft) == ImDrawFlags_RoundCornersLeft) || ((flags & ImDrawFlags_RoundCornersRight) == ImDrawFlags_RoundCornersRight) ? 0.5f : 1.0f) - 1.0f);
+
+        const ImVec2 s_min = ImTrunc(p_min);
+        const ImVec2 s_max = ImTrunc(p_max);
+        const int s_rounding = (int)rounding;
+        if (s_rounding <= 0 || (flags & ImDrawFlags_RoundCornersMask_) == ImDrawFlags_RoundCornersNone)
+        {
+            PrimReserve(6, 4);
+            PrimRect(s_min, s_max, col);
+        }
+        else if (s_rounding <= IM_DRAWLIST_TEX_CORNERS_ROUNDING_MAX)
+        {
+            ImVec4 tex_uvs = _Data->TexUvCorners[s_rounding - 1];
+            _AddMirrored9Slice(s_min, s_max, col, ImMax(2.f, (float)s_rounding), tex_uvs, flags);
+        }
+        else
+        {
+            PathRect(p_min, p_max, (float)s_rounding, flags);
+            PathFillConvex(col);
+        }
     }
     else
     {
@@ -3625,6 +3730,82 @@ static void ImFontAtlasBuildUpdateBasicTexData(ImFontAtlas* atlas)
     atlas->TexUvWhitePixel = ImVec2((r.x + 0.5f) * atlas->TexUvScale.x, (r.y + 0.5f) * atlas->TexUvScale.y);
 }
 
+static ImU8 SampleCorner(float x, float y, float cx, float cy, float r)
+{
+    const float dx = ImMin(x, cx) - cx;
+    const float dy = ImMin(y, cy) - cy;
+    const float d = ImSqrt(dx*dx + dy*dy);
+    const float aa_width = 1.0f;
+    return (ImU8)(ImClamp(1.f - (d - r + aa_width * 0.5f) / aa_width, 0.f, 1.f) * 255.f);
+}
+
+static void ImFontAtlasBuildUpdateCornersTexData(ImFontAtlas* atlas)
+{
+    // Pack and store identifier so we can refresh UV coordinates on texture resize.
+    ImTextureData* tex = atlas->TexData;
+    ImFontAtlasBuilder* builder = atlas->Builder;
+
+    ImFontAtlasRect r;
+    bool add_and_draw = atlas->GetCustomRect(builder->PackIdCornersTexData, &r) == false;
+    if (add_and_draw)
+    {
+        ImVec2i pack_size(0, 0);
+        for (int i = 0; i < IM_DRAWLIST_TEX_CORNERS_ROUNDING_MAX; i++)
+        {
+            pack_size.x += ImMax(2, i+1) + 2;
+            pack_size.y = ImMax(pack_size.y, (i+1) + 2);
+        }
+        builder->PackIdCornersTexData = atlas->AddCustomRect(pack_size.x, pack_size.y, &r);
+        IM_ASSERT(builder->PackIdCornersTexData != ImFontAtlasRectId_Invalid);
+    }
+
+    int x = r.x;
+    int y = r.y;
+    for (int n = 0; n < IM_DRAWLIST_TEX_CORNERS_ROUNDING_MAX; n++) // +1 because of the zero-width row
+    {
+        const int s = ImMax(2, n+1);    // We need at least 2px so that stretching has solid color.
+        const int w = s + 2;
+        const int h = s + 2;
+        // Corner circle
+        const float cx = 1.f + (float)(n+1);
+        const float cy = 1.f + (float)(n+1);
+        const float rad = (float)(n+1);
+
+        IM_ASSERT((x + w) <= (r.x + r.w) && (y + h) <= (r.y + r.h)); // Make sure we're inside the texture bounds before we start writing pixels
+
+        // Write each slice
+        if (add_and_draw && tex->Format == ImTextureFormat_Alpha8)
+        {
+            ImU8* write_ptr = (ImU8*)tex->GetPixelsAt(x, y);
+            const int pitch = tex->Width;
+            for (int ly = 0; ly < h; ly++)
+            {
+                for (int lx = 0; lx < h; lx++)
+                    write_ptr[lx] = SampleCorner((float)lx + 0.5f, (float)ly + 0.5f, cx, cy, rad);
+                write_ptr += pitch;
+            }
+        }
+        else if (add_and_draw && tex->Format == ImTextureFormat_RGBA32)
+        {
+            ImU32* write_ptr = (ImU32*)(void*)tex->GetPixelsAt(x, y);
+            const int pitch = tex->Width;
+            for (int ly = 0; ly < h; ly++)
+            {
+                for (int lx = 0; lx < h; lx++)
+                    write_ptr[lx] = IM_COL32(255, 255, 255, SampleCorner((float)lx + 0.5f, (float)ly + 0.5f, cx, cy, rad));
+                write_ptr += pitch;
+            }
+        }
+
+        // Refresh UV coordinates
+        ImVec2 uv0 = ImVec2((float)(x + 1), (float)(y + 1)) * atlas->TexUvScale;
+        ImVec2 uv1 = ImVec2((float)(x + 1 + s), (float)(y + 1 + s)) * atlas->TexUvScale;
+        atlas->TexUvCorners[n] = ImVec4(uv0.x, uv0.y, uv1.x, uv1.y);
+
+        x += w;
+    }
+}
+
 static void ImFontAtlasBuildUpdateLinesTexData(ImFontAtlas* atlas)
 {
     if (atlas->Flags & ImFontAtlasFlags_NoBakedLines)
@@ -4060,6 +4241,7 @@ void ImFontAtlasUpdateDrawListsSharedData(ImFontAtlas* atlas)
         {
             shared_data->TexUvWhitePixel = atlas->TexUvWhitePixel;
             shared_data->TexUvLines = atlas->TexUvLines;
+            shared_data->TexUvCorners = atlas->TexUvCorners;
         }
 }
 
@@ -4189,6 +4371,7 @@ void ImFontAtlasTextureRepack(ImFontAtlas* atlas, int w, int h)
 
     // Update other cached UV
     ImFontAtlasBuildUpdateLinesTexData(atlas);
+    ImFontAtlasBuildUpdateCornersTexData(atlas);
     ImFontAtlasBuildUpdateBasicTexData(atlas);
 
     builder->LockDisableResize = false;
@@ -4339,6 +4522,7 @@ void ImFontAtlasBuildInit(ImFontAtlas* atlas)
 
     // Add required texture data
     ImFontAtlasBuildUpdateLinesTexData(atlas);
+    ImFontAtlasBuildUpdateCornersTexData(atlas);
     ImFontAtlasBuildUpdateBasicTexData(atlas);
 
     // Register fonts

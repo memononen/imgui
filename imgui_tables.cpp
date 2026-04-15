@@ -2059,11 +2059,11 @@ void ImGui::TableEndRow(ImGuiTable* table)
 
         // Draw top border
         if (top_border_col && bg_y1 >= table->BgClipRect.Min.y && bg_y1 < table->BgClipRect.Max.y)
-            window->DrawList->AddHorizontalLine(table->BorderX1, table->BorderX2, bg_y1, top_border_col, border_size);
+            window->DrawList->AddHorizontalLine(table->BorderX1, table->BorderX2, bg_y1, top_border_col, ImDrawFlags_TruncateCoords, border_size);
 
         // Draw bottom border at the row unfreezing mark (always strong)
         if (draw_strong_bottom_border && bg_y2 >= table->BgClipRect.Min.y && bg_y2 < table->BgClipRect.Max.y)
-            window->DrawList->AddHorizontalLine(table->BorderX1, table->BorderX2, bg_y2, table->BorderColorStrong, border_size);
+            window->DrawList->AddHorizontalLine(table->BorderX1, table->BorderX2, bg_y2, table->BorderColorStrong, ImDrawFlags_TruncateCoords, border_size);
     }
 
     // End frozen rows (when we are past the last frozen row line, teleport cursor and alter clipping rectangle)
@@ -2840,7 +2840,7 @@ void ImGui::TableDrawBorders(ImGuiTable* table)
             else if ((table->Flags & (ImGuiTableFlags_NoBordersInBodyUntilResize | ImGuiTableFlags_NoBordersInBody)) == 0)
                 draw_y2 = draw_y2_body;
             if (draw_y2 > draw_y1) {
-                inner_drawlist->AddVerticalLine(column->MaxX, draw_y1, draw_y2, TableGetColumnBorderCol(table, order_n, column_n), border_size);
+                inner_drawlist->AddVerticalLine(column->MaxX, draw_y1, draw_y2, TableGetColumnBorderCol(table, order_n, column_n), ImDrawFlags_TruncateCoords, border_size);
             }
         }
     }
@@ -2862,14 +2862,14 @@ void ImGui::TableDrawBorders(ImGuiTable* table)
         }
         else if (table->Flags & ImGuiTableFlags_BordersOuterV)
         {
-            inner_drawlist->AddVerticalLine(outer_border.Min.x, outer_border.Min.y, outer_border.Max.y, outer_col, border_size);
-            inner_drawlist->AddVerticalLine(outer_border.Max.x - border_size, outer_border.Min.y, outer_border.Max.y, outer_col, border_size);
+            inner_drawlist->AddVerticalLine(outer_border.Min.x, outer_border.Min.y, outer_border.Max.y, outer_col, ImDrawFlags_TruncateCoords, border_size);
+            inner_drawlist->AddVerticalLine(outer_border.Max.x - border_size, outer_border.Min.y, outer_border.Max.y, outer_col, ImDrawFlags_TruncateCoords, border_size);
         }
         else if (table->Flags & ImGuiTableFlags_BordersOuterH)
         {
             const float h_inset = (table->Flags & ImGuiTableFlags_BordersOuterV) ? border_size : 0.f;
-            inner_drawlist->AddHorizontalLine(outer_border.Min.x + h_inset, outer_border.Max.x - h_inset, outer_border.Min.y, outer_col, border_size);
-            inner_drawlist->AddHorizontalLine(outer_border.Min.x + h_inset, outer_border.Max.x - h_inset, outer_border.Max.y, outer_col, border_size);
+            inner_drawlist->AddHorizontalLine(outer_border.Min.x + h_inset, outer_border.Max.x - h_inset, outer_border.Min.y, outer_col, ImDrawFlags_TruncateCoords, border_size);
+            inner_drawlist->AddHorizontalLine(outer_border.Min.x + h_inset, outer_border.Max.x - h_inset, outer_border.Max.y, outer_col, ImDrawFlags_TruncateCoords, border_size);
         }
     }
     if ((table->Flags & ImGuiTableFlags_BordersInnerH) && table->RowPosY2 < table->OuterRect.Max.y)
@@ -2879,7 +2879,7 @@ void ImGui::TableDrawBorders(ImGuiTable* table)
         // Draw bottom-most row border between it is above outer border.
         const float border_y = table->RowPosY2;
         if (border_y >= table->BgClipRect.Min.y && border_y < table->BgClipRect.Max.y)
-            inner_drawlist->AddHorizontalLine(table->BorderX1 + h_inset, table->BorderX2 - h_inset, border_y, table->BorderColorLight, border_size);
+            inner_drawlist->AddHorizontalLine(table->BorderX1 + h_inset, table->BorderX2 - h_inset, border_y, table->BorderColorLight, ImDrawFlags_TruncateCoords, border_size);
     }
 
     inner_drawlist->PopClipRect();
@@ -4606,7 +4606,7 @@ void ImGui::EndColumns()
             // Draw column
             const ImU32 col = GetColorU32(held ? ImGuiCol_SeparatorActive : hovered ? ImGuiCol_SeparatorHovered : ImGuiCol_Separator);
             const float xi = IM_TRUNC(x);
-            window->DrawList->AddVerticalLine(xi, y1 + 1.0f, y2, col);
+            window->DrawList->AddVerticalLine(xi, y1 + 1.0f, y2, col, ImDrawFlags_TruncateCoords);
         }
 
         // Apply dragging after drawing the column lines, so our rendered lines are in sync with how items were displayed during the frame.

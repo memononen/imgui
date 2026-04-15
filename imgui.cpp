@@ -3961,7 +3961,7 @@ void ImGui::RenderFrame(ImVec2 p_min, ImVec2 p_max, ImU32 fill_col, bool borders
 {
     ImGuiContext& g = *GImGui;
     ImGuiWindow* window = g.CurrentWindow;
-    window->DrawList->AddRectFilled(p_min, p_max, fill_col, rounding);
+    window->DrawList->AddRectFilled(p_min, p_max, fill_col, rounding, ImDrawFlags_TruncateCoords);
     const float border_size = g.Style.FrameBorderSize;
     if (borders && border_size > 0.0f)
     {
@@ -5900,7 +5900,7 @@ static void ImGui::RenderDimmedBackgroundBehindWindow(ImGuiWindow* window, ImU32
         if (draw_list->CmdBuffer.Size == 0)
             draw_list->AddDrawCmd();
         draw_list->PushClipRect(viewport_rect.Min - ImVec2(1, 1), viewport_rect.Max + ImVec2(1, 1), false); // FIXME: Need to strictly ensure ImDrawCmd are not merged (ElemCount==6 checks below will verify that)
-        draw_list->AddRectFilled(viewport_rect.Min, viewport_rect.Max, col);
+        draw_list->AddRectFilled(viewport_rect.Min, viewport_rect.Max, col, 0.f, ImDrawFlags_TruncateCoords);
         ImDrawCmd cmd = draw_list->CmdBuffer.back();
         IM_ASSERT(cmd.ElemCount == 6);
         draw_list->CmdBuffer.pop_back();
@@ -7138,7 +7138,7 @@ static void ImGui::RenderWindowOuterBorders(ImGuiWindow* window)
     if (g.Style.FrameBorderSize > 0 && !(window->Flags & ImGuiWindowFlags_NoTitleBar))
     {
         float y = window->Pos.y + window->TitleBarHeight - g.Style.FrameBorderSize;
-        window->DrawList->AddHorizontalLine(window->Pos.x + border_size, window->Pos.x + window->Size.x - border_size, y, border_col, g.Style.FrameBorderSize);
+        window->DrawList->AddHorizontalLine(window->Pos.x + border_size, window->Pos.x + window->Size.x - border_size, y, border_col, ImDrawFlags_TruncateCoords, g.Style.FrameBorderSize);
     }
 }
 
@@ -7188,7 +7188,7 @@ void ImGui::RenderWindowDecorations(ImGuiWindow* window, const ImRect& title_bar
                 ImRect bg_rect(window->Pos + ImVec2(0, window->TitleBarHeight), window->Pos + window->Size);
                 ImDrawFlags bg_rounding_flags = (flags & ImGuiWindowFlags_NoTitleBar) ? 0 : ImDrawFlags_RoundCornersBottom;
                 ImDrawList* bg_draw_list = window->DrawList;
-                bg_draw_list->AddRectFilled(bg_rect.Min, bg_rect.Max, bg_col, window_rounding, bg_rounding_flags);
+                bg_draw_list->AddRectFilled(bg_rect.Min, bg_rect.Max, bg_col, window_rounding, bg_rounding_flags | ImDrawFlags_TruncateCoords);
             }
         }
 
@@ -7196,7 +7196,7 @@ void ImGui::RenderWindowDecorations(ImGuiWindow* window, const ImRect& title_bar
         if (!(flags & ImGuiWindowFlags_NoTitleBar))
         {
             ImU32 title_bar_col = GetColorU32(title_bar_is_highlight ? ImGuiCol_TitleBgActive : ImGuiCol_TitleBg);
-            window->DrawList->AddRectFilled(title_bar_rect.Min, title_bar_rect.Max, title_bar_col, window_rounding, ImDrawFlags_RoundCornersTop);
+            window->DrawList->AddRectFilled(title_bar_rect.Min, title_bar_rect.Max, title_bar_col, window_rounding, ImDrawFlags_RoundCornersTop | ImDrawFlags_TruncateCoords);
         }
 
         // Menu bar
@@ -7204,9 +7204,9 @@ void ImGui::RenderWindowDecorations(ImGuiWindow* window, const ImRect& title_bar
         {
             ImRect menu_bar_rect = window->MenuBarRect();
             menu_bar_rect.ClipWith(window->Rect());  // Soft clipping, in particular child window don't have minimum size covering the menu bar so this is useful for them.
-            window->DrawList->AddRectFilled(menu_bar_rect.Min, menu_bar_rect.Max, GetColorU32(ImGuiCol_MenuBarBg), (flags & ImGuiWindowFlags_NoTitleBar) ? window_rounding : 0.0f, ImDrawFlags_RoundCornersTop);
+            window->DrawList->AddRectFilled(menu_bar_rect.Min, menu_bar_rect.Max, GetColorU32(ImGuiCol_MenuBarBg), (flags & ImGuiWindowFlags_NoTitleBar) ? window_rounding : 0.0f, ImDrawFlags_RoundCornersTop | ImDrawFlags_TruncateCoords);
             if (style.FrameBorderSize > 0.0f && menu_bar_rect.Max.y < window->Pos.y + window->Size.y) {
-                window->DrawList->AddHorizontalLine(menu_bar_rect.Min.x + window_border_size, menu_bar_rect.Max.x - window_border_size, menu_bar_rect.Max.y - style.FrameBorderSize, GetColorU32(ImGuiCol_Border), style.FrameBorderSize);
+                window->DrawList->AddHorizontalLine(menu_bar_rect.Min.x + window_border_size, menu_bar_rect.Max.x - window_border_size, menu_bar_rect.Max.y - style.FrameBorderSize, GetColorU32(ImGuiCol_Border), ImDrawFlags_TruncateCoords, style.FrameBorderSize);
             }
         }
 
@@ -16150,7 +16150,7 @@ void ImGui::DebugRenderViewportThumbnail(ImDrawList* draw_list, ImGuiViewportP* 
     ImVec2 scale = bb.GetSize() / viewport->Size;
     ImVec2 off = bb.Min - viewport->Pos * scale;
     float alpha_mul = 1.0f;
-    window->DrawList->AddRectFilled(bb.Min, bb.Max, GetColorU32(ImGuiCol_Border, alpha_mul * 0.40f));
+    window->DrawList->AddRectFilled(bb.Min, bb.Max, GetColorU32(ImGuiCol_Border, alpha_mul * 0.40f), 0.f, ImDrawFlags_TruncateCoords);
     for (ImGuiWindow* thumb_window : g.Windows)
     {
         if (!thumb_window->WasActive || (thumb_window->Flags & ImGuiWindowFlags_ChildWindow))
@@ -16163,8 +16163,8 @@ void ImGui::DebugRenderViewportThumbnail(ImDrawList* draw_list, ImGuiViewportP* 
         thumb_r.ClipWithFull(bb);
         title_r.ClipWithFull(bb);
         const bool window_is_focused = (g.NavWindow && thumb_window->RootWindowForTitleBarHighlight == g.NavWindow->RootWindowForTitleBarHighlight);
-        window->DrawList->AddRectFilled(thumb_r.Min, thumb_r.Max, GetColorU32(ImGuiCol_WindowBg, alpha_mul));
-        window->DrawList->AddRectFilled(title_r.Min, title_r.Max, GetColorU32(window_is_focused ? ImGuiCol_TitleBgActive : ImGuiCol_TitleBg, alpha_mul));
+        window->DrawList->AddRectFilled(thumb_r.Min, thumb_r.Max, GetColorU32(ImGuiCol_WindowBg, alpha_mul), 0.f, ImDrawFlags_TruncateCoords);
+        window->DrawList->AddRectFilled(title_r.Min, title_r.Max, GetColorU32(window_is_focused ? ImGuiCol_TitleBgActive : ImGuiCol_TitleBg, alpha_mul), 0.f, ImDrawFlags_TruncateCoords);
         window->DrawList->AddRect(thumb_r.Min, thumb_r.Max, GetColorU32(ImGuiCol_Border, alpha_mul));
         window->DrawList->AddText(g.Font, g.FontSize * 1.0f, title_r.Min, GetColorU32(ImGuiCol_Text, alpha_mul), thumb_window->Name, FindRenderedTextEnd(thumb_window->Name));
     }
@@ -17573,8 +17573,8 @@ void ImGui::DebugNodeTabBar(ImGuiTabBar* tab_bar, const char* label)
     {
         ImDrawList* draw_list = GetForegroundDrawList(tab_bar->Window);
         draw_list->AddRect(tab_bar->BarRect.Min, tab_bar->BarRect.Max, IM_COL32(255, 255, 0, 255));
-        draw_list->AddVerticalLine(tab_bar->ScrollingRectMinX, tab_bar->BarRect.Min.y, tab_bar->BarRect.Max.y, IM_COL32(0, 255, 0, 255));
-        draw_list->AddVerticalLine(tab_bar->ScrollingRectMaxX, tab_bar->BarRect.Min.y, tab_bar->BarRect.Max.y, IM_COL32(0, 255, 0, 255));
+        draw_list->AddVerticalLine(tab_bar->ScrollingRectMinX, tab_bar->BarRect.Min.y, tab_bar->BarRect.Max.y, IM_COL32(0, 255, 0, 255), ImDrawFlags_TruncateCoords);
+        draw_list->AddVerticalLine(tab_bar->ScrollingRectMaxX, tab_bar->BarRect.Min.y, tab_bar->BarRect.Max.y, IM_COL32(0, 255, 0, 255), ImDrawFlags_TruncateCoords);
     }
     if (open)
     {
@@ -17903,8 +17903,8 @@ void ImGui::DebugDrawCursorPos(ImU32 col)
     ImGuiContext& g = *GImGui;
     ImGuiWindow* window = g.CurrentWindow;
     ImVec2 pos = window->DC.CursorPos;
-    window->DrawList->AddVerticalLine(pos.x, pos.y - 3.0f, pos.y + 4.0f, col, 1.0f);
-    window->DrawList->AddHorizontalLine(pos.x - 3.0f, pos.x + 4.0f, pos.y, col, 1.0f);
+    window->DrawList->AddVerticalLine(pos.x, pos.y - 3.0f, pos.y + 4.0f, col, ImDrawFlags_TruncateCoords, 1.0f);
+    window->DrawList->AddHorizontalLine(pos.x - 3.0f, pos.x + 4.0f, pos.y, col, ImDrawFlags_TruncateCoords, 1.0f);
 }
 
 // Draw a 10px wide rectangle around CurposPos.x using Line Y1/Y2 in current window's DrawList
@@ -17915,9 +17915,9 @@ void ImGui::DebugDrawLineExtents(ImU32 col)
     float curr_x = window->DC.CursorPos.x;
     float line_y1 = (window->DC.IsSameLine ? window->DC.CursorPosPrevLine.y : window->DC.CursorPos.y);
     float line_y2 = line_y1 + (window->DC.IsSameLine ? window->DC.PrevLineSize.y : window->DC.CurrLineSize.y);
-    window->DrawList->AddHorizontalLine(curr_x - 5.0f, curr_x + 5.0f, line_y1, col, 1.0f);
-    window->DrawList->AddVerticalLine(curr_x, line_y1, line_y2, col, 1.0f);
-    window->DrawList->AddHorizontalLine(curr_x - 5.0f,curr_x + 5.0f, line_y2, col, 1.0f);
+    window->DrawList->AddHorizontalLine(curr_x - 5.0f, curr_x + 5.0f, line_y1, col, ImDrawFlags_TruncateCoords, 1.0f);
+    window->DrawList->AddVerticalLine(curr_x, line_y1, line_y2, col, ImDrawFlags_TruncateCoords, 1.0f);
+    window->DrawList->AddHorizontalLine(curr_x - 5.0f,curr_x + 5.0f, line_y2, col, ImDrawFlags_TruncateCoords, 1.0f);
 }
 
 // Draw last item rect in ForegroundDrawList (so it is always visible)

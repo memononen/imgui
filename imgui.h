@@ -3148,6 +3148,10 @@ struct ImGuiSelectionExternalStorage
 #define IM_DRAWLIST_TEX_LINES_WIDTH_MAX     (32)
 #endif
 
+#ifndef IM_DRAWLIST_TEX_CORNERS_ROUNDING_MAX
+#define IM_DRAWLIST_TEX_CORNERS_ROUNDING_MAX     (16)
+#endif
+
 // ImDrawIdx: vertex index. [Compile-time configurable type]
 // - To use 16-bit indices + allow large meshes: backend need to set 'io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset' and handle ImDrawCmd::VtxOffset (recommended).
 // - To use 32-bit indices: override with '#define ImDrawIdx unsigned int' in your imconfig.h file.
@@ -3262,6 +3266,7 @@ enum ImDrawFlags_
     ImDrawFlags_RoundCornersAll             = ImDrawFlags_RoundCornersTopLeft | ImDrawFlags_RoundCornersTopRight | ImDrawFlags_RoundCornersBottomLeft | ImDrawFlags_RoundCornersBottomRight,
     ImDrawFlags_RoundCornersDefault_        = ImDrawFlags_RoundCornersAll, // Default to ALL corners if none of the _RoundCornersXX flags are specified.
     ImDrawFlags_RoundCornersMask_           = ImDrawFlags_RoundCornersAll | ImDrawFlags_RoundCornersNone,
+    ImDrawFlags_TruncateCoords              = 1 << 9, // AddRectFilled(), the coordinates for the call will be truncated to integer pixel values, allowing faster rendering.
 };
 
 // Draw stroke position relative to the shape outline
@@ -3335,8 +3340,8 @@ struct ImDrawList
     //   In future versions we will use textures to provide cheaper and higher-quality circles.
     //   Use AddNgon() and AddNgonFilled() functions if you need to guarantee a specific number of sides.
     IMGUI_API void  AddLine(const ImVec2& p1, const ImVec2& p2, ImU32 col, float thickness = 1.0f);
-    IMGUI_API void  AddHorizontalLine(float min_x, float max_x, float y, ImU32 col, float thickness = 1.0f, ImDrawStrokePos stroke_pos = ImDrawStrokePos_Inside);
-    IMGUI_API void  AddVerticalLine(float x, float min_y, float max_y, ImU32 col, float thickness = 1.0f, ImDrawStrokePos stroke_pos = ImDrawStrokePos_Inside);
+    IMGUI_API void  AddHorizontalLine(float min_x, float max_x, float y, ImU32 col, ImDrawFlags flags = 0, float thickness = 1.0f, ImDrawStrokePos stroke_pos = ImDrawStrokePos_Inside);
+    IMGUI_API void  AddVerticalLine(float x, float min_y, float max_y, ImU32 col, ImDrawFlags flags = 0, float thickness = 1.0f, ImDrawStrokePos stroke_pos = ImDrawStrokePos_Inside);
     IMGUI_API void  AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding = 0.0f, ImDrawFlags flags = 0, float thickness = 1.0f, ImDrawStrokePos stroke_pos = ImDrawStrokePos_Inside);   // a: upper-left, b: lower-right (== upper-left + size)
     IMGUI_API void  AddRectFilled(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding = 0.0f, ImDrawFlags flags = 0);                     // a: upper-left, b: lower-right (== upper-left + size)
     IMGUI_API void  AddRectFilledMultiColor(const ImVec2& p_min, const ImVec2& p_max, ImU32 col_upr_left, ImU32 col_upr_right, ImU32 col_bot_right, ImU32 col_bot_left);
@@ -3447,6 +3452,7 @@ struct ImDrawList
     IMGUI_API int   _CalcCircleAutoSegmentCount(float radius) const;
     IMGUI_API void  _PathArcToFastEx(const ImVec2& center, float radius, int a_min_sample, int a_max_sample, int a_step);
     IMGUI_API void  _PathArcToN(const ImVec2& center, float radius, float a_min, float a_max, int num_segments);
+    IMGUI_API void  _AddMirrored9Slice(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float r, ImVec4 tex_uvs, ImDrawFlags flags);
 };
 
 // All draw data to render a Dear ImGui frame
@@ -3800,6 +3806,7 @@ struct ImFontAtlas
     ImVector<ImFont*>           Fonts;              // Hold all the fonts returned by AddFont*. Fonts[0] is the default font upon calling ImGui::NewFrame(), use ImGui::PushFont()/PopFont() to change the current font.
     ImVector<ImFontConfig>      Sources;            // Source/configuration data
     ImVec4                      TexUvLines[IM_DRAWLIST_TEX_LINES_WIDTH_MAX + 1];  // UVs for baked anti-aliased lines
+    ImVec4                      TexUvCorners[IM_DRAWLIST_TEX_CORNERS_ROUNDING_MAX];  // UVs for baked anti-aliased corners
     int                         TexNextUniqueID;    // Next value to be stored in TexData->UniqueID
     int                         FontNextUniqueID;   // Next value to be stored in ImFont->FontID
     ImVector<ImDrawListSharedData*> DrawListSharedDatas; // List of users for this atlas. Typically one per Dear ImGui context.

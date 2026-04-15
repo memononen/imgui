@@ -10138,8 +10138,8 @@ static void ShowExampleAppCustomRendering(bool* p_open)
                 //draw_list->AddTriangle(ImVec2(x+sz*0.2f,y), ImVec2(x, y+sz-0.5f), ImVec2(x+sz*0.4f, y+sz-0.5f), col, th);x+= sz*0.4f + spacing; // Thin triangle
                 PathConcaveShape(draw_list, x, y, sz); draw_list->PathStroke(col, ImDrawFlags_Closed, th);          x += sz + spacing;  // Concave Shape
                 //draw_list->AddPolyline(concave_shape, IM_COUNTOF(concave_shape), col, ImDrawFlags_Closed, th);
-                draw_list->AddHorizontalLine(x, x + sz, y, col, th);                                       x += sz + spacing;  // Horizontal line (note: drawing a filled rectangle will be faster!)
-                draw_list->AddVerticalLine(x, y, y + sz, col, th);                                       x += spacing;       // Vertical line (note: drawing a filled rectangle will be faster!)
+                draw_list->AddHorizontalLine(x, x + sz, y, col, ImDrawFlags_None, th);                                       x += sz + spacing;  // Horizontal line (note: drawing a filled rectangle will be faster!)
+                draw_list->AddVerticalLine(x, y, y + sz, col, ImDrawFlags_None, th);                                       x += spacing;       // Vertical line (note: drawing a filled rectangle will be faster!)
                 draw_list->AddLine(ImVec2(x, y), ImVec2(x + sz, y + sz), col, th);                                  x += sz + spacing;  // Diagonal line
 
                 // Path

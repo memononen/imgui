@@ -281,7 +281,7 @@ extern IMGUI_API ImGuiContext* GImGui;  // Current implicit context pointer
 #define IM_F32_TO_INT8_UNBOUND(_VAL)    ((int)((_VAL) * 255.0f + ((_VAL)>=0 ? 0.5f : -0.5f)))   // Unsaturated, for display purpose
 #define IM_F32_TO_INT8_SAT(_VAL)        ((int)(ImSaturate(_VAL) * 255.0f + 0.5f))               // Saturated, always output 0..255
 #define IM_TRUNC(_VAL)                  ((float)(int)(_VAL))                                    // Positive values only! ImTrunc() is not inlined in MSVC debug builds
-#define IM_ROUND(_VAL)                  ((float)(int)((_VAL) + 0.5f))                           // Positive values only! 
+#define IM_ROUND(_VAL)                  ((float)(int)((_VAL) + 0.5f))                           // Positive values only!
 //#define IM_FLOOR IM_TRUNC             // [OBSOLETE] Renamed in 1.90.0 (Sept 2023)
 
 // Hint for branch prediction
@@ -864,6 +864,7 @@ struct IMGUI_API ImDrawListSharedData
 {
     ImVec2          TexUvWhitePixel;            // UV of white pixel in the atlas (== FontAtlas->TexUvWhitePixel)
     const ImVec4*   TexUvLines;                 // UV of anti-aliased lines in the atlas (== FontAtlas->TexUvLines)
+    const ImVec4*   TexUvCorners;
     ImFontAtlas*    FontAtlas;                  // Current font atlas
     ImFont*         Font;                       // Current font (used for simplified AddText overload)
     float           FontSize;                   // Current font size (used for for simplified AddText overload)
@@ -3907,8 +3908,9 @@ struct ImFontAtlasBuilder
     // Custom rectangle identifiers
     ImFontAtlasRectId           PackIdMouseCursors;     // White pixel + mouse cursors. Also happen to be fallback in case of packing failure.
     ImFontAtlasRectId           PackIdLinesTexData;
+    ImFontAtlasRectId           PackIdCornersTexData;
 
-    ImFontAtlasBuilder()        { memset((void*)this, 0, sizeof(*this)); FrameCount = -1; RectsIndexFreeListStart = -1; PackIdMouseCursors = PackIdLinesTexData = -1; }
+    ImFontAtlasBuilder()        { memset((void*)this, 0, sizeof(*this)); FrameCount = -1; RectsIndexFreeListStart = -1; PackIdMouseCursors = PackIdLinesTexData = PackIdCornersTexData = -1; }
 };
 
 IMGUI_API void              ImFontAtlasBuildInit(ImFontAtlas* atlas);
