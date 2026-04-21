@@ -862,6 +862,7 @@ static void CalcSegmentNormals(const ImVec2* points, const int points_count, ImV
 void ImDrawList::_AddPolylineThin(const ImVec2* points, const int points_count, ImU32 col, ImDrawFlags flags, float thickness, ImVec4 tex_uvs)
 {
     const bool closed = (flags & ImDrawFlags_Closed) != 0;
+    const bool miters_only = (flags & ImDrawFlags_MiterOnly) != 0;
 
     _Data->TempBuffer.reserve_discard(points_count * 2);
     ImVec2* normals = _Data->TempBuffer.Data;
@@ -880,16 +881,17 @@ void ImDrawList::_AddPolylineThin(const ImVec2* points, const int points_count, 
     // One option could be to calculate the miter values and overl & bevel flags before, then alloc, and finally commit.
     int idx_count = 0;
     int vtx_count = 0;
+    const int max_verts_per_point = miters_only ? 2 : 7;
+    const int max_tris_per_point = miters_only ? 2 : 5;
     if (closed)
     {
-        vtx_count = /*body*/points_count * 7 + /*closing*/3;
-        idx_count = (/*body*/points_count * 5 + /*closing*/4) * 3;
+        vtx_count = /*body*/points_count * max_verts_per_point + /*closing*/2;
+        idx_count = (/*body*/points_count * max_tris_per_point + /*closing*/2) * 3;
     }
     else
     {
-        // Body + caps
-        vtx_count = /*body*/(points_count - 2) * 7 + /*caps*/(6 * 2);
-        idx_count = (/*body*/(points_count - 2) * 5 + /*last seg*/4 + /*caps*/(4 * 2)) * 3;
+        vtx_count = /*body*/(points_count - 2) * max_verts_per_point + /*caps*/(6 * 2);
+        idx_count = (/*body*/(points_count - 2) * max_tris_per_point + /*last seg*/4 + /*caps*/(4 * 2)) * 3;
     }
 
     PrimReserve(idx_count, vtx_count);
@@ -966,8 +968,8 @@ void ImDrawList::_AddPolylineThin(const ImVec2* points, const int points_count, 
         const float miter_offset_y = (n0.y + n1.y) * miter_scale_factor;
         const float miter_distance_sqr = miter_offset_x * miter_offset_x + miter_offset_y * miter_offset_y;
 
-        const bool overlap = (len_sqr0 < miter_distance_sqr) || (len_sqr1 < miter_distance_sqr) || (cos_theta <= IM_POLYLINE_MITER_ANGLE_LIMIT);
-        const bool bevel = miter_distance_sqr > miter_distance_limit_sqr;
+        const bool overlap = !miters_only && ((len_sqr0 < miter_distance_sqr) || (len_sqr1 < miter_distance_sqr) || (cos_theta <= IM_POLYLINE_MITER_ANGLE_LIMIT));
+        const bool bevel = !miters_only && (miter_distance_sqr > miter_distance_limit_sqr);
 
         if (bevel)
         {
@@ -1199,6 +1201,7 @@ void ImDrawList::_AddPolylineThin(const ImVec2* points, const int points_count, 
 void ImDrawList::_AddPolylineThick(const ImVec2* points, const int points_count, ImU32 col, ImDrawFlags flags, float thickness)
 {
     const bool closed = (flags & ImDrawFlags_Closed) != 0;
+    const bool miters_only = (flags & ImDrawFlags_MiterOnly) != 0;
 
     _Data->TempBuffer.reserve_discard(points_count * 2);
     ImVec2* normals = _Data->TempBuffer.Data;
@@ -1220,16 +1223,18 @@ void ImDrawList::_AddPolylineThick(const ImVec2* points, const int points_count,
 
     int idx_count = 0;
     int vtx_count = 0;
+    const int max_verts_per_point = miters_only ? 3 : 5;
+    const int max_tris_per_point = miters_only ? 4 : 5;
     if (closed)
     {
-        vtx_count = /*body*/points_count * 5 + /*closing*/3;
-        idx_count = (/*body*/points_count * 5 + /*closing*/4) * 3;
+        vtx_count = /*body*/points_count * max_verts_per_point + /*closing*/3;
+        idx_count = (/*body*/points_count * max_tris_per_point + /*closing*/4) * 3;
     }
     else
     {
         // Body + caps
-        vtx_count = /*body*/(points_count - 2) * 5 + /*caps*/(6 * 2);
-        idx_count = (/*body*/(points_count - 2) * 5 + /*last seg*/4 + /*caps*/(4 * 2)) * 3;
+        vtx_count = /*body*/(points_count - 2) * max_verts_per_point + /*caps*/(6 * 2);
+        idx_count = (/*body*/(points_count - 2) * max_tris_per_point + /*last seg*/4 + /*caps*/(4 * 2)) * 3;
     }
 
     PrimReserve(idx_count, vtx_count);
@@ -1309,11 +1314,12 @@ void ImDrawList::_AddPolylineThick(const ImVec2* points, const int points_count,
         const float miter_offset_y = (n0.y + n1.y) * miter_scale_factor;
         const float miter_distance_sqr = miter_offset_x * miter_offset_x + miter_offset_y * miter_offset_y;
 
-        const bool overlap = (len_sqr0 < miter_distance_sqr) || (len_sqr1 < miter_distance_sqr) || (cos_theta <= IM_POLYLINE_MITER_ANGLE_LIMIT);
-        const bool bevel = miter_distance_sqr > miter_distance_limit_sqr;
+        const bool overlap = !miters_only && ((len_sqr0 < miter_distance_sqr) || (len_sqr1 < miter_distance_sqr) || (cos_theta <= IM_POLYLINE_MITER_ANGLE_LIMIT));
+        const bool bevel = !miters_only && (miter_distance_sqr > miter_distance_limit_sqr);
 
         if (bevel)
         {
+            IM_ASSERT(!miters_only);
             // Clipped bevel
             const float sin_theta = n0.y * n1.x - n0.x * n1.y;
             float bevel_normal_x = n0.x + n1.x;
@@ -1410,6 +1416,7 @@ void ImDrawList::_AddPolylineThick(const ImVec2* points, const int points_count,
         {
             if (overlap)
             {
+                IM_ASSERT(!miters_only);
                 // Dislocated miter
                 const float sin_theta = n0.y * n1.x - n0.x * n1.y;
                 if (sin_theta < 0.f)
@@ -1524,7 +1531,7 @@ void ImDrawList::AddPolyline(const ImVec2* points, const int points_count, ImU32
         return;
     if (screen_thickness < 1.f)
     {
-        const float alpha = thickness;
+        const float alpha = screen_thickness;
         col = ImGui::GetColorU32(col, alpha);
         screen_thickness = 1.f;
         thickness = _FringeScale;
@@ -2242,28 +2249,49 @@ void ImDrawList::AddVerticalLine(float x, float min_y, float max_y, ImU32 col, f
 }
 
 // p_min = upper-left, p_max = lower-right
-// Note we don't render 1 pixels sized rectangles properly.
 void ImDrawList::AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding, ImDrawFlags flags, float thickness, ImDrawStrokePos stroke_pos)
 {
     if ((col & IM_COL32_A_MASK) == 0)
         return;
+
+    ImVec2 adjusted_min = p_min;
+    ImVec2 adjusted_max = p_max;
+    float adjusted_rounding = rounding;
+
     const ImVec2 offset(thickness * 0.5f, thickness * 0.5f);
     if (stroke_pos == ImDrawStrokePos_Inside)
-        PathRect(p_min + offset, p_max - offset, rounding - thickness * 0.5f, flags);
-    else if (stroke_pos == ImDrawStrokePos_Center)
-        PathRect(p_min, p_max, rounding, flags);
+    {
+        adjusted_min += offset;
+        adjusted_max -= offset;
+        adjusted_rounding -= thickness * 0.5f;
+    }
     else if (stroke_pos == ImDrawStrokePos_Outside)
-        PathRect(p_min - offset, p_max + offset, rounding + thickness * 0.5f, flags);
+    {
+        adjusted_min -= offset;
+        adjusted_max += offset;
+        adjusted_rounding += thickness * 0.5f;
+    }
     else if (stroke_pos == ImDrawStrokePos_Legacy)
     {
+        adjusted_min += ImVec2(0.50f, 0.50f);
         if (Flags & ImDrawListFlags_AntiAliasedLines)
-            PathRect(p_min + ImVec2(0.50f, 0.50f), p_max - ImVec2(0.50f, 0.50f), rounding, flags);
+            adjusted_max -= ImVec2(0.50f, 0.50f);
         else
-            PathRect(p_min + ImVec2(0.50f, 0.50f), p_max - ImVec2(0.49f, 0.49f), rounding, flags); // Better looking lower-right corner and rounded non-AA shapes.
+            adjusted_max -= ImVec2(0.49f, 0.49f); // Better looking lower-right corner and rounded non-AA shapes.
     }
 
+    const float width = adjusted_max.x - adjusted_min.x;
+    const float height = adjusted_max.y - adjusted_min.y;
+    if (ImMin(width, height) < (thickness + _FringeScale))
+    {
+        // Rectangle has collapsed into filled rectangle.
+        AddRectFilled(p_min, p_max, col, rounding, flags);
+        return;
+    }
 
-    PathStroke(col, ImDrawFlags_Closed, thickness);
+    // TODO: does not handle well the case that radius < thickness/2.
+    PathRect(adjusted_min, adjusted_max, adjusted_rounding, flags);
+    PathStroke(col, ImDrawFlags_Closed | ImDrawFlags_MiterOnly, thickness);
 }
 
 void ImDrawList::AddRectFilled(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding, ImDrawFlags flags)
@@ -2346,20 +2374,29 @@ void ImDrawList::AddTriangleFilled(const ImVec2& p1, const ImVec2& p2, const ImV
 
 void ImDrawList::AddCircle(const ImVec2& center, float radius, ImU32 col, int num_segments, float thickness, ImDrawStrokePos stroke_pos)
 {
-    if ((col & IM_COL32_A_MASK) == 0 || radius < 0.5f)
+    if ((col & IM_COL32_A_MASK) == 0 || radius < 0.01f)
         return;
 
+    float adjusted_radius = radius;
     if (stroke_pos == ImDrawStrokePos_Inside)
-        radius -= thickness * 0.5f;
+        adjusted_radius -= thickness * 0.5f;
     else if (stroke_pos == ImDrawStrokePos_Outside)
-        radius += thickness * 0.5f;
+        adjusted_radius += thickness * 0.5f;
     else if (stroke_pos == ImDrawStrokePos_Legacy)
-        radius -= 0.5f;
+        adjusted_radius -= 0.5f;
+
+    if (adjusted_radius < (thickness * 0.5f + _FringeScale * 0.5f))
+    {
+        // The circle has collapsed into a filled circle.
+        AddCircleFilled(center, radius, col, num_segments);
+        return;
+    }
 
     if (num_segments <= 0)
     {
         // Use arc with automatic segment count
-        _PathArcToFastEx(center, radius, 0, IM_DRAWLIST_ARCFAST_SAMPLE_MAX, 0);
+        const int a_step = IM_DRAWLIST_ARCFAST_SAMPLE_MAX / _CalcCircleAutoSegmentCount(radius); // Radius used here inteitionally so that the circle matches filled circle of same radius.
+        _PathArcToFastEx(center, adjusted_radius, 0, IM_DRAWLIST_ARCFAST_SAMPLE_MAX, a_step);
         _Path.Size--;
     }
     else
@@ -2369,16 +2406,26 @@ void ImDrawList::AddCircle(const ImVec2& center, float radius, ImU32 col, int nu
 
         // Because we are filling a closed shape we remove 1 from the count of segments/points
         const float a_max = (IM_PI * 2.0f) * ((float)num_segments - 1.0f) / (float)num_segments;
-        PathArcTo(center, radius, 0.0f, a_max, num_segments - 1);
+        PathArcTo(center, adjusted_radius, 0.0f, a_max, num_segments - 1);
     }
 
-    PathStroke(col, ImDrawFlags_Closed, thickness);
+    PathStroke(col, ImDrawFlags_Closed | ImDrawFlags_MiterOnly, thickness);
 }
 
 void ImDrawList::AddCircleFilled(const ImVec2& center, float radius, ImU32 col, int num_segments)
 {
-    if ((col & IM_COL32_A_MASK) == 0 || radius < 0.5f)
+    if ((col & IM_COL32_A_MASK) == 0)
         return;
+
+    float screen_diameter = radius * 2.f / _FringeScale;
+    if (screen_diameter < 1.f/255.f)
+        return;
+    if (screen_diameter < 1.f)
+    {
+        const float alpha = screen_diameter;
+        col = ImGui::GetColorU32(col, alpha);
+        radius = _FringeScale * 0.5f;
+    }
 
     if (num_segments <= 0)
     {
@@ -2405,17 +2452,28 @@ void ImDrawList::AddNgon(const ImVec2& center, float radius, ImU32 col, int num_
     if ((col & IM_COL32_A_MASK) == 0 || num_segments <= 2)
         return;
 
-    if (stroke_pos == ImDrawStrokePos_Inside)
-        radius -= thickness * 0.5f;
-    else if (stroke_pos == ImDrawStrokePos_Outside)
-        radius += thickness * 0.5f;
-    else if (stroke_pos == ImDrawStrokePos_Legacy)
-        radius -= 0.5f;
+    const float unit_apothem = ImCos(IM_PI / (float)num_segments);
+    const float miter_thickness = thickness / unit_apothem;
 
-    // Because we are filling a closed shape we remove 1 from the count of segments/points
+    float adjusted_radius = radius;
+    if (stroke_pos == ImDrawStrokePos_Inside)
+        adjusted_radius -= miter_thickness * 0.5f;
+    else if (stroke_pos == ImDrawStrokePos_Outside)
+        adjusted_radius += miter_thickness * 0.5f;
+    else if (stroke_pos == ImDrawStrokePos_Legacy)
+        adjusted_radius -= 0.5f;
+
+    if (adjusted_radius < (miter_thickness * 0.5f + _FringeScale * 0.5f))
+    {
+        // The polygon has collapsed into a filled polygon.
+        AddNgonFilled(center, radius, col, num_segments);
+        return;
+    }
+
+     // Because we are filling a closed shape we remove 1 from the count of segments/points
     const float a_max = (IM_PI * 2.0f) * ((float)num_segments - 1.0f) / (float)num_segments;
-    PathArcTo(center, radius, 0.0f, a_max, num_segments - 1);
-    PathStroke(col, ImDrawFlags_Closed, thickness);
+    PathArcTo(center, adjusted_radius, 0.0f, a_max, num_segments - 1);
+    PathStroke(col, ImDrawFlags_Closed | ImDrawFlags_MiterOnly, thickness);
 }
 
 // Guaranteed to honor 'num_segments'
@@ -2423,6 +2481,16 @@ void ImDrawList::AddNgonFilled(const ImVec2& center, float radius, ImU32 col, in
 {
     if ((col & IM_COL32_A_MASK) == 0 || num_segments <= 2)
         return;
+
+    float screen_diameter = radius * 2.f / _FringeScale;
+    if (screen_diameter < 1.f/255.f)
+        return;
+    if (screen_diameter < 1.f)
+    {
+        const float alpha = screen_diameter;
+        col = ImGui::GetColorU32(col, alpha);
+        radius = _FringeScale * 0.5f;
+    }
 
     // Because we are filling a closed shape we remove 1 from the count of segments/points
     const float a_max = (IM_PI * 2.0f) * ((float)num_segments - 1.0f) / (float)num_segments;
@@ -2436,19 +2504,59 @@ void ImDrawList::AddEllipse(const ImVec2& center, const ImVec2& radius, ImU32 co
     if ((col & IM_COL32_A_MASK) == 0)
         return;
 
-    ImVec2 r = radius;
+    float stroke_offset = 0.f;
     if (stroke_pos == ImDrawStrokePos_Inside)
-        r -= ImVec2(thickness * 0.5f, thickness * 0.5f);
+        stroke_offset = -thickness * 0.5f;
     else if (stroke_pos == ImDrawStrokePos_Outside)
-        r += ImVec2(thickness * 0.5f, thickness * 0.5f);
+        stroke_offset = thickness * 0.5f;
+
+    if ((ImMin(radius.x, radius.y) + stroke_offset) < (thickness * 0.5f + _FringeScale * 0.5f))
+    {
+        AddEllipseFilled(center, radius, col, rot, num_segments);
+        return;
+    }
 
     if (num_segments <= 0)
-        num_segments = _CalcCircleAutoSegmentCount(ImMax(r.x, r.y)); // A bit pessimistic, maybe there's a better computation to do here.
+        num_segments = _CalcCircleAutoSegmentCount(ImMax(radius.x, radius.y)); // A bit pessimistic, maybe there's a better computation to do here.
 
-    // Because we are filling a closed shape we remove 1 from the count of segments/points
-    const float a_max = IM_PI * 2.0f * ((float)num_segments - 1.0f) / (float)num_segments;
-    PathEllipticalArcTo(center, r, rot, 0.0f, a_max, num_segments - 1);
-    PathStroke(col, ImDrawFlags_Closed, thickness);
+    _Path.reserve(_Path.Size + (num_segments + 1));
+
+    // Custom tessellation, since offset ellipse is not an ellipse anymore.
+    const float cos_rot = ImCos(rot);
+    const float sin_rot = ImSin(rot);
+    if (stroke_offset != 0.f)
+    {
+        const float inv_rx = 1.0f / radius.x;
+        const float inv_ry = 1.0f / radius.y;
+        for (int i = 0; i < num_segments; i++)
+        {
+            const float a = ((float)i / (float)num_segments) * IM_PI * 2.0f;
+            const float dir_x = ImCos(a);
+            const float dir_y = ImSin(a);
+            float nx = dir_x * inv_rx;
+            float ny = dir_y * inv_ry;
+            IM_NORMALIZE2F_OVER_ZERO(nx, ny);
+            ImVec2 point(dir_x * radius.x + nx * stroke_offset, dir_y * radius.y + ny * stroke_offset);
+            const ImVec2 rel((point.x * cos_rot) - (point.y * sin_rot), (point.x * sin_rot) + (point.y * cos_rot));
+            point.x = rel.x + center.x;
+            point.y = rel.y + center.y;
+            _Path.push_back(point);
+        }
+    }
+    else
+    {
+        for (int i = 0; i < num_segments; i++)
+        {
+            const float a = ((float)i / (float)num_segments) * IM_PI * 2.0f;
+            ImVec2 point(ImCos(a) * radius.x, ImSin(a) * radius.y);
+            const ImVec2 rel((point.x * cos_rot) - (point.y * sin_rot), (point.x * sin_rot) + (point.y * cos_rot));
+            point.x = rel.x + center.x;
+            point.y = rel.y + center.y;
+            _Path.push_back(point);
+        }
+    }
+
+    PathStroke(col, ImDrawFlags_Closed | ImDrawFlags_MiterOnly, thickness);
 }
 
 void ImDrawList::AddEllipseFilled(const ImVec2& center, const ImVec2& radius, ImU32 col, float rot, int num_segments)
