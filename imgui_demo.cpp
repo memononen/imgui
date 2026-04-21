@@ -10102,7 +10102,7 @@ static void ShowExampleAppCustomRendering(bool* p_open)
             static int curve_segments_override_v = 8;
             static ImVec4 colf = ImVec4(1.0f, 1.0f, 0.4f, 1.0f);
             ImGui::DragFloat("Size", &sz, 0.2f, 2.0f, 100.0f, "%.0f");
-            ImGui::DragFloat("Thickness", &thickness, 0.05f, 1.0f, 8.0f, "%.02f");
+            ImGui::DragFloat("Thickness", &thickness, 0.05f, 0.0f, 32.0f, "%.02f");
             ImGui::SliderInt("N-gon sides", &ngon_sides, 3, 12);
             ImGui::Checkbox("##circlesegmentoverride", &circle_segments_override);
             ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
@@ -10186,7 +10186,46 @@ static void ShowExampleAppCustomRendering(bool* p_open)
             draw_list->AddRectFilledMultiColor(ImVec2(x, y), ImVec2(x + sz, y + sz), IM_COL32(0, 0, 0, 255), IM_COL32(255, 0, 0, 255), IM_COL32(255, 255, 0, 255), IM_COL32(0, 255, 0, 255));
             x += sz + spacing;
 
-            ImGui::Dummy(ImVec2((sz + spacing) * 13.2f, (sz + spacing) * 3.0f));
+            //
+            x = p.x + 4;
+            y += sz + spacing;
+
+            // Zig
+            draw_list->PathLineTo(ImVec2(x, y+sz*0.125f));
+            draw_list->PathLineTo(ImVec2(x + sz, y));
+            draw_list->PathLineTo(ImVec2(x + sz*1.125f, y+sz));
+            draw_list->PathLineTo(ImVec2(x + sz*1.5f, y+sz*0.125f));
+            draw_list->PathStroke(col, 0, thickness);
+
+            // Sliver
+            x += sz*2 + spacing;
+/*            draw_list->PathLineTo(ImVec2(x, y));
+            draw_list->PathLineTo(ImVec2(x + sz*4, y));
+            draw_list->PathLineTo(ImVec2(x + sz*4.125f, y+sz*0.25f));
+            draw_list->PathStroke(col, ImDrawFlags_Closed, thickness);*/
+
+            draw_list->PathLineTo(ImVec2(x, y));
+            draw_list->PathLineTo(ImVec2(x + sz*4, y));
+            draw_list->PathLineTo(ImVec2(x + sz*4.125f, y+sz*0.25f));
+            draw_list->PathStroke(col, ImDrawFlags_Closed, thickness);
+
+            x += sz*4 + spacing;
+            // Trigger overlap
+            draw_list->PathLineTo(ImVec2(x, y));
+            draw_list->PathLineTo(ImVec2(x + sz, y));
+            draw_list->PathLineTo(ImVec2(x-thickness*0.15f + sz, y+thickness*0.3f));
+            draw_list->PathLineTo(ImVec2(x + sz*2, y+thickness*0.3f));
+            draw_list->PathStroke(col, ImDrawFlags_None, thickness);
+
+            // Dont trigger overlap
+            draw_list->PathLineTo(ImVec2(x, y + sz*0.5f));
+            draw_list->PathLineTo(ImVec2(x + sz, y + sz*0.5f));
+            draw_list->PathLineTo(ImVec2(x + sz, y + sz*0.5f+thickness));
+            draw_list->PathLineTo(ImVec2(x + sz*2, y + sz*0.5f+thickness));
+            draw_list->PathStroke(col, ImDrawFlags_None, thickness);
+
+
+            ImGui::Dummy(ImVec2((sz + spacing) * 13.2f, (sz + spacing) * 4.0f));
             ImGui::PopItemWidth();
             ImGui::EndTabItem();
         }
