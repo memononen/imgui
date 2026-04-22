@@ -859,16 +859,10 @@ static void CalcSegmentNormals(const ImVec2* points, const int points_count, ImV
 }
 
 
-void ImDrawList::_AddPolylineThin(const ImVec2* points, const int points_count, ImU32 col, ImDrawFlags flags, float thickness, ImVec4 tex_uvs)
+void ImDrawList::_AddPolylineThin(const ImVec2* points, ImVec2* normals, float* sqr_lengths, const int points_count, ImU32 col, ImDrawFlags flags, float thickness, ImVec4 tex_uvs)
 {
     const bool closed = (flags & ImDrawFlags_Closed) != 0;
     const bool miters_only = (flags & ImDrawFlags_MiterOnly) != 0;
-
-    _Data->TempBuffer.reserve_discard(points_count * 2);
-    ImVec2* normals = _Data->TempBuffer.Data;
-    float* sqr_lengths = (float*)(normals + points_count);
-    CalcSegmentNormals(points, points_count, normals, sqr_lengths, closed);
-
     const ImU32 col_trans = col & ~IM_COL32_A_MASK;
 
     thickness += _FringeScale;
@@ -1198,15 +1192,10 @@ void ImDrawList::_AddPolylineThin(const ImVec2* points, const int points_count, 
     PrimUnreserve(idx_count - idx_used, vtx_count - vtx_used);
 }
 
-void ImDrawList::_AddPolylineThick(const ImVec2* points, const int points_count, ImU32 col, ImDrawFlags flags, float thickness)
+void ImDrawList::_AddPolylineThick(const ImVec2* points, ImVec2* normals, float* sqr_lengths, const int points_count, ImU32 col, ImDrawFlags flags, float thickness)
 {
     const bool closed = (flags & ImDrawFlags_Closed) != 0;
     const bool miters_only = (flags & ImDrawFlags_MiterOnly) != 0;
-
-    _Data->TempBuffer.reserve_discard(points_count * 2);
-    ImVec2* normals = _Data->TempBuffer.Data;
-    float* sqr_lengths = (float*)(normals + points_count);
-    CalcSegmentNormals(points, points_count, normals, sqr_lengths, closed);
 
     const ImU32 col_trans = col & ~IM_COL32_A_MASK;
 
@@ -1544,14 +1533,19 @@ void ImDrawList::AddPolyline(const ImVec2* points, const int points_count, ImU32
     const int int_thickness = (int)screen_thickness;
     const bool can_use_thin = ImAbs(screen_thickness - (float)int_thickness) < 0.01f && (int_thickness >= 1 && int_thickness < IM_DRAWLIST_TEX_LINES_WIDTH_MAX);
 
+    _Data->TempBuffer.reserve_discard(points_count * 2);
+    ImVec2* normals = _Data->TempBuffer.Data;
+    float* sqr_lengths = (float*)(normals + points_count);
+    CalcSegmentNormals(points, points_count, normals, sqr_lengths, (flags & ImDrawFlags_Closed) != 0);
+
     if (can_use_thin)
     {
         const ImVec4 tex_uvs = _Data->TexUvLines[int_thickness];
-        _AddPolylineThin(points, points_count, col, flags, (float)int_thickness * _FringeScale, tex_uvs);
+        _AddPolylineThin(points, normals, sqr_lengths, points_count, col, flags, (float)int_thickness * _FringeScale, tex_uvs);
     }
     else
     {
-        _AddPolylineThick(points, points_count, col, flags, thickness);
+        _AddPolylineThick(points, normals, sqr_lengths, points_count, col, flags, thickness);
     }
 }
 
@@ -2248,11 +2242,32 @@ void ImDrawList::AddVerticalLine(float x, float min_y, float max_y, ImU32 col, f
     AddLine(ImVec2(x + offset, min_y), ImVec2(x + offset, max_y), col, thickness);
 }
 
+static void RectCornerArc(ImDrawList* draw_list, float cx, float cy, float radius, const int arc_step, const int arc_point_count, const int corner)
+{
+    if (radius == 0.f)
+    {
+        draw_list->_Path.push_back(ImVec2(cx, cy));
+        return;
+    }
+
+    int arc_idx = (IM_DRAWLIST_ARCFAST_TABLE_SIZE / 4) * corner;
+    for (int i = 0; i < arc_point_count; i++)
+    {
+        ImVec2 pt;
+        pt.x = cx - draw_list->_Data->ArcFastVtx[arc_idx].x * radius;
+        pt.y = cy - draw_list->_Data->ArcFastVtx[arc_idx].y * radius;
+        draw_list->_Path.push_back(pt);
+        arc_idx = (arc_idx + arc_step) % IM_DRAWLIST_ARCFAST_TABLE_SIZE;
+    }
+}
+
 // p_min = upper-left, p_max = lower-right
 void ImDrawList::AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding, ImDrawFlags flags, float thickness, ImDrawStrokePos stroke_pos)
 {
     if ((col & IM_COL32_A_MASK) == 0)
         return;
+
+    const bool has_rounding = rounding >= _FringeScale;
 
     ImVec2 adjusted_min = p_min;
     ImVec2 adjusted_max = p_max;
@@ -2289,8 +2304,41 @@ void ImDrawList::AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, fl
         return;
     }
 
-    // TODO: does not handle well the case that radius < thickness/2.
-    PathRect(adjusted_min, adjusted_max, adjusted_rounding, flags);
+    IM_ASSERT((flags & 0x0F) == 0 && "Misuse of legacy hardcoded ImDrawCornerFlags values!");
+    if ((flags & ImDrawFlags_RoundCornersMask_) == 0)
+        flags |= ImDrawFlags_RoundCornersAll;
+
+    if (!has_rounding || (flags & ImDrawFlags_RoundCornersMask_) == ImDrawFlags_RoundCornersNone)
+    {
+        PathLineTo(adjusted_min);
+        PathLineTo(ImVec2(adjusted_max.x, adjusted_min.y));
+        PathLineTo(adjusted_max);
+        PathLineTo(ImVec2(adjusted_min.x, adjusted_max.y));
+    }
+    else
+    {
+        // Constrain rounding to rect dimensions
+        adjusted_rounding = ImMin(adjusted_rounding, ImFabs(width) * (((flags & ImDrawFlags_RoundCornersTop) == ImDrawFlags_RoundCornersTop) || ((flags & ImDrawFlags_RoundCornersBottom) == ImDrawFlags_RoundCornersBottom) ? 0.5f : 1.0f) - 1.0f);
+        adjusted_rounding = ImMin(adjusted_rounding, ImFabs(height) * (((flags & ImDrawFlags_RoundCornersLeft) == ImDrawFlags_RoundCornersLeft) || ((flags & ImDrawFlags_RoundCornersRight) == ImDrawFlags_RoundCornersRight) ? 0.5f : 1.0f) - 1.0f);
+        // We have to have some kind of curve to render the corner with PathStroke().
+        // The small value limits the rounding to about half the stroke radius.
+        adjusted_rounding = ImMax(_FringeScale * 0.25f, adjusted_rounding);
+
+        const float rounding_tl = (flags & ImDrawFlags_RoundCornersTopLeft)     ? adjusted_rounding : 0.0f;
+        const float rounding_tr = (flags & ImDrawFlags_RoundCornersTopRight)    ? adjusted_rounding : 0.0f;
+        const float rounding_br = (flags & ImDrawFlags_RoundCornersBottomRight) ? adjusted_rounding : 0.0f;
+        const float rounding_bl = (flags & ImDrawFlags_RoundCornersBottomLeft)  ? adjusted_rounding : 0.0f;
+
+        // Use custom arcs so that we can specify the point count.
+        const int arc_step = ImClamp(IM_DRAWLIST_ARCFAST_SAMPLE_MAX / this->_CalcCircleAutoSegmentCount(ImMax(adjusted_rounding, thickness * 0.5f)), 1, IM_DRAWLIST_ARCFAST_TABLE_SIZE / 4);
+        const int arc_point_count = (IM_DRAWLIST_ARCFAST_TABLE_SIZE / 4) / arc_step + 1;
+
+        RectCornerArc(this, adjusted_min.x + rounding_tl, adjusted_min.y + rounding_tl, rounding_tl, arc_step, arc_point_count, 0);
+        RectCornerArc(this, adjusted_max.x - rounding_tr, adjusted_min.y + rounding_tr, rounding_tr, arc_step, arc_point_count, 1);
+        RectCornerArc(this, adjusted_max.x - rounding_br, adjusted_max.y - rounding_br, rounding_br, arc_step, arc_point_count, 2);
+        RectCornerArc(this, adjusted_min.x + rounding_bl, adjusted_max.y - rounding_bl, rounding_bl, arc_step, arc_point_count, 3);
+    }
+
     PathStroke(col, ImDrawFlags_Closed | ImDrawFlags_MiterOnly, thickness);
 }
 

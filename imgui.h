@@ -3449,8 +3449,8 @@ struct ImDrawList
     IMGUI_API int   _CalcCircleAutoSegmentCount(float radius) const;
     IMGUI_API void  _PathArcToFastEx(const ImVec2& center, float radius, int a_min_sample, int a_max_sample, int a_step);
     IMGUI_API void  _PathArcToN(const ImVec2& center, float radius, float a_min, float a_max, int num_segments);
-    IMGUI_API void  _AddPolylineThin(const ImVec2* points, const int points_count, ImU32 col, ImDrawFlags flags, float thickness, ImVec4 tex_uvs);
-    IMGUI_API void  _AddPolylineThick(const ImVec2* points, const int points_count, ImU32 col, ImDrawFlags flags, float thickness);
+    IMGUI_API void  _AddPolylineThin(const ImVec2* points, ImVec2* normals, float* sqr_lengths, const int points_count, ImU32 col, ImDrawFlags flags, float thickness, ImVec4 tex_uvs);
+    IMGUI_API void  _AddPolylineThick(const ImVec2* points, ImVec2* normals, float* sqr_lengths, const int points_count, ImU32 col, ImDrawFlags flags, float thickness);
 
 };
 
