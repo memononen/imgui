@@ -472,6 +472,7 @@ void ImDrawList::_ResetForNewFrame()
     _Splitter.Clear();
     CmdBuffer.push_back(ImDrawCmd());
     _FringeScale = _Data->InitialFringeScale;
+    _FringeScaleIsInteger = ImIsTruncated(_FringeScale);
 }
 
 void ImDrawList::_ClearFreeMemory()
@@ -1483,25 +1484,21 @@ void ImDrawList::AddHorizontalLine(float min_x, float max_x, float y, ImU32 col,
 {
     const bool allow_trunc = ImGui::GetIO().KeyShift;
 
-    if (allow_trunc && (flags & ImDrawFlags_TruncateCoords))
+    if (stroke_pos == ImDrawStrokePos_Center)
+        y -= thickness*0.5f;
+    else if (stroke_pos == ImDrawStrokePos_Outside)
+        y -= thickness;
+
+    const bool is_truncated = ImIsTruncated4(min_x, max_x, y, thickness);
+
+    if (allow_trunc && is_truncated)
     {
-        thickness = ImTrunc(thickness);
-        float offset = 0.f;
-        if (stroke_pos == ImDrawStrokePos_Center)
-            offset -= ImTrunc(thickness*0.5f);
-        else if (stroke_pos == ImDrawStrokePos_Outside)
-            offset -= thickness;
         PrimReserve(6, 4);
-        PrimRect(ImTrunc(ImVec2(min_x, y + offset)), ImTrunc(ImVec2(max_x, y + offset + thickness)), col);
+        PrimRect(ImVec2(min_x, y), ImVec2(max_x, y + thickness), col);
     }
     else
     {
-        float offset = 0.f;
-        if (stroke_pos == ImDrawStrokePos_Inside)
-            offset += thickness*0.5f;
-        else if (stroke_pos == ImDrawStrokePos_Outside)
-            offset -= thickness*0.5f;
-        AddLine(ImVec2(min_x, y + offset), ImVec2(max_x, y + offset), col, thickness);
+        AddRect(ImVec2(min_x, y), ImVec2(max_x, y + thickness), col);
     }
 }
 
@@ -1509,25 +1506,21 @@ void ImDrawList::AddVerticalLine(float x, float min_y, float max_y, ImU32 col, I
 {
     const bool allow_trunc = ImGui::GetIO().KeyShift;
 
-    if (allow_trunc && (flags & ImDrawFlags_TruncateCoords))
+    if (stroke_pos == ImDrawStrokePos_Center)
+        x += thickness*0.5f;
+    else if (stroke_pos == ImDrawStrokePos_Outside)
+        x -= thickness;
+
+    const bool is_truncated = ImIsTruncated4(x, min_y, max_y, thickness);
+
+    if (allow_trunc && is_truncated)
     {
-        thickness = ImTrunc(thickness);
-        float offset = 0.f;
-        if (stroke_pos == ImDrawStrokePos_Center)
-            offset -= ImTrunc(thickness*0.5f);
-        else if (stroke_pos == ImDrawStrokePos_Outside)
-            offset -= thickness;
         PrimReserve(6, 4);
-        PrimRect(ImTrunc(ImVec2(x + offset, min_y)), ImTrunc(ImVec2(x + offset + thickness, max_y)), col);
+        PrimRect(ImTrunc(ImVec2(x, min_y)), ImTrunc(ImVec2(x + thickness, max_y)), col);
     }
     else
     {
-        float offset = 0.f;
-        if (stroke_pos == ImDrawStrokePos_Inside)
-            offset += thickness*0.5f;
-        else if (stroke_pos == ImDrawStrokePos_Outside)
-            offset -= thickness*0.5f;
-        AddLine(ImVec2(x + offset, min_y), ImVec2(x + offset, max_y), col, thickness);
+        AddRect(ImVec2(x, min_y), ImVec2(x + thickness, max_y), col);
     }
 }
 
@@ -1610,8 +1603,9 @@ void ImDrawList::AddRectFilled(const ImVec2& p_min, const ImVec2& p_max, ImU32 c
         return;
 
     const bool allow_trunc = ImGui::GetIO().KeyShift;
+    const bool is_truncated = ImIsTruncated4(p_min.x, p_min.y, p_max.x, p_min.y) && ImIsTruncated(rounding);
 
-    if (allow_trunc && (flags & ImDrawFlags_TruncateCoords))
+    if (allow_trunc && is_truncated)
     {
         if ((flags & ImDrawFlags_RoundCornersMask_) == 0)
             flags |= ImDrawFlags_RoundCornersAll;
@@ -1619,18 +1613,16 @@ void ImDrawList::AddRectFilled(const ImVec2& p_min, const ImVec2& p_max, ImU32 c
         rounding = ImMin(rounding, ImFabs(p_max.x - p_min.x) * (((flags & ImDrawFlags_RoundCornersTop) == ImDrawFlags_RoundCornersTop) || ((flags & ImDrawFlags_RoundCornersBottom) == ImDrawFlags_RoundCornersBottom) ? 0.5f : 1.0f) - 1.0f);
         rounding = ImMin(rounding, ImFabs(p_max.y - p_min.y) * (((flags & ImDrawFlags_RoundCornersLeft) == ImDrawFlags_RoundCornersLeft) || ((flags & ImDrawFlags_RoundCornersRight) == ImDrawFlags_RoundCornersRight) ? 0.5f : 1.0f) - 1.0f);
 
-        const ImVec2 s_min = ImTrunc(p_min);
-        const ImVec2 s_max = ImTrunc(p_max);
         const int s_rounding = (int)rounding;
         if (s_rounding <= 0 || (flags & ImDrawFlags_RoundCornersMask_) == ImDrawFlags_RoundCornersNone)
         {
             PrimReserve(6, 4);
-            PrimRect(s_min, s_max, col);
+            PrimRect(p_min, p_max, col);
         }
         else if (s_rounding <= IM_DRAWLIST_TEX_CORNERS_ROUNDING_MAX)
         {
             ImVec4 tex_uvs = _Data->TexUvCorners[s_rounding - 1];
-            _AddMirrored9Slice(s_min, s_max, col, ImMax(2.f, (float)s_rounding), tex_uvs, flags);
+            _AddMirrored9Slice(p_min, p_max, col, ImMax(2.f, (float)s_rounding), tex_uvs, flags);
         }
         else
         {
