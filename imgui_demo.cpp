@@ -10196,9 +10196,9 @@ static void ShowExampleAppCustomRendering(bool* p_open)
             draw_list->PathLineTo(ImVec2(x + sz*1.125f, y+sz));
             draw_list->PathLineTo(ImVec2(x + sz*1.5f, y+sz*0.125f));
             draw_list->PathStroke(col, 0, thickness);
+            x += sz*2 + spacing;
 
             // Sliver
-            x += sz*2 + spacing;
 /*            draw_list->PathLineTo(ImVec2(x, y));
             draw_list->PathLineTo(ImVec2(x + sz*4, y));
             draw_list->PathLineTo(ImVec2(x + sz*4.125f, y+sz*0.25f));
@@ -10208,14 +10208,15 @@ static void ShowExampleAppCustomRendering(bool* p_open)
             draw_list->PathLineTo(ImVec2(x + sz*4, y));
             draw_list->PathLineTo(ImVec2(x + sz*4.125f, y+sz*0.25f));
             draw_list->PathStroke(col, ImDrawFlags_Closed, thickness);
-
             x += sz*4 + spacing;
+
             // Trigger overlap
             draw_list->PathLineTo(ImVec2(x, y));
             draw_list->PathLineTo(ImVec2(x + sz, y));
             draw_list->PathLineTo(ImVec2(x-thickness*0.15f + sz, y+thickness*0.3f));
             draw_list->PathLineTo(ImVec2(x + sz*2, y+thickness*0.3f));
             draw_list->PathStroke(col, ImDrawFlags_None, thickness);
+            x += sz*2 + spacing;
 
             // Dont trigger overlap
             draw_list->PathLineTo(ImVec2(x, y + sz*0.5f));
@@ -10223,6 +10224,22 @@ static void ShowExampleAppCustomRendering(bool* p_open)
             draw_list->PathLineTo(ImVec2(x + sz, y + sz*0.5f+thickness));
             draw_list->PathLineTo(ImVec2(x + sz*2, y + sz*0.5f+thickness));
             draw_list->PathStroke(col, ImDrawFlags_None, thickness);
+
+            //
+            x = p.x + 4;
+            y += sz + spacing;
+
+            draw_list->PathLineTo(ImVec2(x + sz*4.125f, y+sz*0.25f));
+            draw_list->PathLineTo(ImVec2(x, y));
+            draw_list->PathLineTo(ImVec2(x + sz*4, y));
+            draw_list->PathFillConvex(col);
+            x += sz*4 + spacing;
+
+            draw_list->PathLineTo(ImVec2(x, y));
+            draw_list->PathLineTo(ImVec2(x + sz*2, y));
+            draw_list->PathLineTo(ImVec2(x + sz*4, y+sz*0.1f));
+            draw_list->PathFillConvex(col);
+            x += sz*4 + spacing;
 
 
             ImGui::Dummy(ImVec2((sz + spacing) * 13.2f, (sz + spacing) * 4.0f));
