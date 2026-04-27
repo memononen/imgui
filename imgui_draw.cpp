@@ -915,7 +915,9 @@ void ImDrawList::_AddPolylineThin(const ImVec2* points, ImVec2* normals, float* 
         n1 = normals[0];
         len_sqr1 = sqr_lengths[0];
 
-        const ImVec2 dir(n1.y, -n1.x);
+		const ImVec2 dir(n1.y, -n1.x);
+		if (flags & ImDrawFlags_SquareCap)
+			p1 -= dir * (half_thickness - half_aa); // At this point half_thickness has half fringe width baked in.
         const ImVec2 pa = p1 - dir * half_aa;
         const ImVec2 pb = p1 + dir * half_aa;
 
@@ -1135,6 +1137,8 @@ void ImDrawList::_AddPolylineThin(const ImVec2* points, ImVec2* normals, float* 
 
         // End cap
         const ImVec2 dir(n1.y, -n1.x);
+		if (flags & ImDrawFlags_SquareCap)
+			p1 += dir * (half_thickness - half_aa); // At this point half_thickness has half fringe width baked in.
         const ImVec2 pa = p1 - dir * half_aa;
         const ImVec2 pb = p1 + dir * half_aa;
 
@@ -1229,6 +1233,8 @@ void ImDrawList::_AddPolylineThick(const ImVec2* points, ImVec2* normals, float*
 
         // Start cap
         const ImVec2 dir(n1.y, -n1.x);
+		if (flags & ImDrawFlags_SquareCap)
+			p1 -= dir * (half_thickness - half_aa); // At this point half_thickness has half fringe width baked in.
         const ImVec2 pa = p1 - dir * half_aa;
         const ImVec2 pb = p1 + dir * half_aa;
 
@@ -1446,6 +1452,8 @@ void ImDrawList::_AddPolylineThick(const ImVec2* points, ImVec2* normals, float*
 
         // End cap
         const ImVec2 dir(n1.y, -n1.x);
+		if (flags & ImDrawFlags_SquareCap)
+			p1 += dir * (half_thickness - half_aa); // At this point half_thickness has half fringe width baked in.
         const ImVec2 pa = p1 - dir * half_aa;
         const ImVec2 pb = p1 + dir * half_aa;
 
@@ -1833,7 +1841,7 @@ void ImDrawList::AddConvexPolyFilled(const ImVec2* points, const int points_coun
     _VtxWritePtr += points_count;
     _VtxCurrentIdx += points_count;
 
-    unsigned int prev_outer_idx = -1; // We dont know oueter vert could yet, will need to patch once we're done.
+    unsigned int prev_outer_idx = 0; // We dont know outer vert could yet, will need to patch once we're done.
 
     const float miter_distance_limit = half_aa * IM_POLYLINE_MITER_LIMIT;
     const float miter_distance_limit_sqr = miter_distance_limit * miter_distance_limit;
@@ -2344,13 +2352,13 @@ void ImDrawList::PathRect(const ImVec2& a, const ImVec2& b, float rounding, ImDr
     }
 }
 
-void ImDrawList::AddLine(const ImVec2& p1, const ImVec2& p2, ImU32 col, float thickness)
+void ImDrawList::AddLine(const ImVec2& p1, const ImVec2& p2, ImU32 col, float thickness, ImDrawFlags flags)
 {
     if ((col & IM_COL32_A_MASK) == 0)
         return;
     PathLineTo(p1);
     PathLineTo(p2);
-    PathStroke(col, 0, thickness);
+    PathStroke(col, flags, thickness);
 }
 
 void ImDrawList::AddHorizontalLine(float min_x, float max_x, float y, ImU32 col, float thickness, ImDrawStrokePos stroke_pos)
@@ -2837,25 +2845,25 @@ void ImDrawList::AddEllipseFilled(const ImVec2& center, const ImVec2& radius, Im
 }
 
 // Cubic Bezier takes 4 controls points
-void ImDrawList::AddBezierCubic(const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, const ImVec2& p4, ImU32 col, float thickness, int num_segments)
+void ImDrawList::AddBezierCubic(const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, const ImVec2& p4, ImU32 col, float thickness, int num_segments, ImDrawFlags flags)
 {
     if ((col & IM_COL32_A_MASK) == 0)
         return;
 
     PathLineTo(p1);
     PathBezierCubicCurveTo(p2, p3, p4, num_segments);
-    PathStroke(col, 0, thickness);
+    PathStroke(col, flags, thickness);
 }
 
 // Quadratic Bezier takes 3 controls points
-void ImDrawList::AddBezierQuadratic(const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, ImU32 col, float thickness, int num_segments)
+void ImDrawList::AddBezierQuadratic(const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, ImU32 col, float thickness, int num_segments, ImDrawFlags flags)
 {
     if ((col & IM_COL32_A_MASK) == 0)
         return;
 
     PathLineTo(p1);
     PathBezierQuadraticCurveTo(p2, p3, num_segments);
-    PathStroke(col, 0, thickness);
+    PathStroke(col, flags, thickness);
 }
 
 void ImDrawList::AddText(ImFont* font, float font_size, const ImVec2& pos, ImU32 col, const char* text_begin, const char* text_end, float wrap_width, const ImVec4* cpu_fine_clip_rect)
