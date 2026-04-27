@@ -3146,6 +3146,7 @@ struct ImGuiSelectionExternalStorage
 // The maximum line width to bake anti-aliased textures for. Build atlas with ImFontAtlasFlags_NoBakedLines to disable baking.
 #ifndef IM_DRAWLIST_TEX_LINES_WIDTH_MAX
 #define IM_DRAWLIST_TEX_LINES_WIDTH_MAX     (32)
+#define IM_DRAWLIST_TEX_LINE_FRACT_WIDTH_MAX     (128)
 #endif
 
 // ImDrawIdx: vertex index. [Compile-time configurable type]
@@ -3451,8 +3452,8 @@ struct ImDrawList
     IMGUI_API int   _CalcCircleAutoSegmentCount(float radius) const;
     IMGUI_API void  _PathArcToFastEx(const ImVec2& center, float radius, int a_min_sample, int a_max_sample, int a_step);
     IMGUI_API void  _PathArcToN(const ImVec2& center, float radius, float a_min, float a_max, int num_segments);
-    IMGUI_API void  _AddPolylineThin(const ImVec2* points, ImVec2* normals, float* sqr_lengths, const int points_count, ImU32 col, ImDrawFlags flags, float thickness, ImVec4 tex_uvs);
-    IMGUI_API void  _AddPolylineThick(const ImVec2* points, ImVec2* normals, float* sqr_lengths, const int points_count, ImU32 col, ImDrawFlags flags, float thickness);
+    IMGUI_API void  _AddPolylineIntThickness(const ImVec2* points, ImVec2* normals, float* sqr_lengths, const int points_count, ImU32 col, ImDrawFlags flags, float thickness, ImVec4 tex_uvs);
+    IMGUI_API void  _AddPolylineFractThickness(const ImVec2* points, ImVec2* normals, float* sqr_lengths, const int points_count, ImU32 col, ImDrawFlags flags, float thickness);
     IMGUI_API void  _AddRectTinyRounding(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding, ImDrawFlags flags, float thickness);
 
 };
@@ -3808,6 +3809,7 @@ struct ImFontAtlas
     ImVector<ImFont*>           Fonts;              // Hold all the fonts returned by AddFont*. Fonts[0] is the default font upon calling ImGui::NewFrame(), use ImGui::PushFont()/PopFont() to change the current font.
     ImVector<ImFontConfig>      Sources;            // Source/configuration data
     ImVec4                      TexUvLines[IM_DRAWLIST_TEX_LINES_WIDTH_MAX + 1];  // UVs for baked anti-aliased lines
+	ImVec4						TexUvLineFract;		// UVs for fraction thickness baked anti-aliased lines
     int                         TexNextUniqueID;    // Next value to be stored in TexData->UniqueID
     int                         FontNextUniqueID;   // Next value to be stored in ImFont->FontID
     ImVector<ImDrawListSharedData*> DrawListSharedDatas; // List of users for this atlas. Typically one per Dear ImGui context.

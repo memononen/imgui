@@ -57,14 +57,14 @@ It can help to think how the shape would unfold to reason if the texture would s
 
 As mentioned earlier we have two variations of the outline generation, depending on the texture coordinates. Bulk of the polyline code is how the corner vertices are placed, and how the triangles are placed. Unfortunately it is manual work.
 
-Below are corners for the two variations. Note that the overlap corners for the "thin" variant creates a T vertex (which should be ok), if that causes problems, then 1 extra triangle needs to be added at along the seam.
+Below are corners for the two variations. Note that the overlap corners for the integer variant creates a T vertex (which should be ok), if that causes problems, then 1 extra triangle needs to be added at along the seam.
 
 The vertices are organized so that the last 2 (or 3) vertices becomes the 0,1 or 0,1,2 for the next corner (base_idx in the code).
 
-### Thin tessellation
+### Integer size tessellation
 ![Thin tessellation](thin_tessellation.svg)
 
-### Thick tessellation
+### Fractional size tessellation
 ![Thick tessellation](thick_tessellation.svg)
 
 The variants are called "thin" and "thick", since the code was inherited from a version which had the lines specialized based on 1px vs thick lines.
