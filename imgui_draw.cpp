@@ -472,7 +472,7 @@ void ImDrawList::_ResetForNewFrame()
     _Splitter.Clear();
     CmdBuffer.push_back(ImDrawCmd());
     _FringeScale = _Data->InitialFringeScale;
-    _FringeScaleIsInteger = ImIsTruncated(_FringeScale);
+    _FringeScaleIsInteger = ImIsTruncated(1.f / _FringeScale);
 }
 
 void ImDrawList::_ClearFreeMemory()
@@ -1489,7 +1489,7 @@ void ImDrawList::AddHorizontalLine(float min_x, float max_x, float y, ImU32 col,
     else if (stroke_pos == ImDrawStrokePos_Outside)
         y -= thickness;
 
-    const bool is_truncated = ImIsTruncated4(min_x, max_x, y, thickness);
+    const bool is_truncated = _FringeScaleIsInteger && ImIsTruncated4(min_x, max_x, y, thickness);
 
     if (allow_trunc && is_truncated)
     {
@@ -1498,7 +1498,7 @@ void ImDrawList::AddHorizontalLine(float min_x, float max_x, float y, ImU32 col,
     }
     else
     {
-        AddRect(ImVec2(min_x, y), ImVec2(max_x, y + thickness), col);
+        AddRectFilled(ImVec2(min_x, y), ImVec2(max_x, y + thickness), col);
     }
 }
 
@@ -1511,16 +1511,16 @@ void ImDrawList::AddVerticalLine(float x, float min_y, float max_y, ImU32 col, I
     else if (stroke_pos == ImDrawStrokePos_Outside)
         x -= thickness;
 
-    const bool is_truncated = ImIsTruncated4(x, min_y, max_y, thickness);
+    const bool is_truncated = _FringeScaleIsInteger && ImIsTruncated4(x, min_y, max_y, thickness);
 
     if (allow_trunc && is_truncated)
     {
         PrimReserve(6, 4);
-        PrimRect(ImTrunc(ImVec2(x, min_y)), ImTrunc(ImVec2(x + thickness, max_y)), col);
+        PrimRect(ImTrunc(ImVec2(x, min_y)), ImVec2(x + thickness, max_y), col);
     }
     else
     {
-        AddRect(ImVec2(x, min_y), ImVec2(x + thickness, max_y), col);
+        AddRectFilled(ImVec2(x, min_y), ImVec2(x + thickness, max_y), col);
     }
 }
 
@@ -1651,7 +1651,7 @@ void ImDrawList::AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, fl
         return;
 
     const bool allow_trunc = ImGui::GetIO().KeyShift;
-    const bool is_truncated = ImIsTruncated4(p_min.x, p_min.y, p_max.x, p_min.y) && ImIsTruncated(rounding) && ImIsTruncated(thickness);
+    const bool is_truncated = _FringeScaleIsInteger && ImIsTruncated4(p_min.x, p_min.y, p_max.x, p_min.y) && ImIsTruncated4(rounding, thickness, 0.f, 0.f);
 
     if (allow_trunc && is_truncated && (stroke_pos == ImDrawStrokePos_Inside || stroke_pos == ImDrawStrokePos_Outside))
     {
@@ -1661,8 +1661,8 @@ void ImDrawList::AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, fl
         rounding = ImMin(rounding, ImFabs(p_max.x - p_min.x) * (((flags & ImDrawFlags_RoundCornersTop) == ImDrawFlags_RoundCornersTop) || ((flags & ImDrawFlags_RoundCornersBottom) == ImDrawFlags_RoundCornersBottom) ? 0.5f : 1.0f) - 1.0f);
         rounding = ImMin(rounding, ImFabs(p_max.y - p_min.y) * (((flags & ImDrawFlags_RoundCornersLeft) == ImDrawFlags_RoundCornersLeft) || ((flags & ImDrawFlags_RoundCornersRight) == ImDrawFlags_RoundCornersRight) ? 0.5f : 1.0f) - 1.0f);
 
-        int s_rounding = (int)rounding;
-        int s_thickness = (int)thickness;
+        int s_rounding = (int)(rounding / _FringeScale);
+        int s_thickness = (int)(thickness / _FringeScale);
 
         ImVec2 s_min = p_min;
         ImVec2 s_max = p_max;
@@ -1675,7 +1675,7 @@ void ImDrawList::AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, fl
 
         if (s_rounding <= 0 || (flags & ImDrawFlags_RoundCornersMask_) == ImDrawFlags_RoundCornersNone)
         {
-            const float t = (float)s_thickness;
+            const float t = (float)s_thickness * _FringeScale;
             PrimReserve(6*4, 4*4);
             PrimRect(ImVec2(p_min.x, p_min.y), ImVec2(p_max.x, p_min.y + t), col);
             PrimRect(ImVec2(p_min.x, p_min.y + t), ImVec2(p_min.x + t, p_max.y - t), col);
@@ -1683,13 +1683,14 @@ void ImDrawList::AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, fl
             PrimRect(ImVec2(p_min.x, p_max.y - t), ImVec2(p_max.x, p_max.y), col);
             return;
         }
-        if (s_thickness <= IM_DRAWLIST_TEX_CORNERS_THICKNESS_MAX && s_rounding <= IM_DRAWLIST_TEX_CORNERS_ROUNDING_MAX)
+        if ((Flags & ImDrawListFlags_RoundCornersUseTex) && s_thickness <= IM_DRAWLIST_TEX_CORNERS_THICKNESS_MAX && s_rounding <= IM_DRAWLIST_TEX_CORNERS_ROUNDING_MAX)
         {
-            const int size = ImMax(s_rounding, s_thickness);
+			IM_ASSERT_PARANOID(!(_Data->Font->OwnerAtlas->Flags & ImFontAtlasFlags_NoBakedRoundCorners));
+            const int size = ImMax(s_rounding, s_thickness); // This is matching the baking calculations.
             const int idx = (s_thickness - 1) * IM_DRAWLIST_TEX_CORNERS_ROUNDING_MAX + s_rounding - 1;
-            IM_ASSERT(idx >= 0 && idx < IM_DRAWLIST_TEX_CORNERS_ROUNDING_MAX * IM_DRAWLIST_TEX_CORNERS_THICKNESS_MAX);
+            IM_ASSERT_PARANOID(idx >= 0 && idx < IM_DRAWLIST_TEX_CORNERS_ROUNDING_MAX * IM_DRAWLIST_TEX_CORNERS_THICKNESS_MAX);
             const ImVec4 tex_uvs = _Data->TexUvCornerStrokes[idx];
-            _AddRectBaked(s_min, s_max, col, (float)size, (float)thickness, tex_uvs, flags);
+            _AddRectBaked(s_min, s_max, col, (float)size * _FringeScale, (float)thickness, tex_uvs, flags);
             return;
         }
     }
@@ -1777,16 +1778,21 @@ void ImDrawList::AddRectFilled(const ImVec2& p_min, const ImVec2& p_max, ImU32 c
         rounding = ImMin(rounding, ImFabs(p_max.x - p_min.x) * (((flags & ImDrawFlags_RoundCornersTop) == ImDrawFlags_RoundCornersTop) || ((flags & ImDrawFlags_RoundCornersBottom) == ImDrawFlags_RoundCornersBottom) ? 0.5f : 1.0f) - 1.0f);
         rounding = ImMin(rounding, ImFabs(p_max.y - p_min.y) * (((flags & ImDrawFlags_RoundCornersLeft) == ImDrawFlags_RoundCornersLeft) || ((flags & ImDrawFlags_RoundCornersRight) == ImDrawFlags_RoundCornersRight) ? 0.5f : 1.0f) - 1.0f);
 
-        const int s_rounding = (int)rounding;
+
+        const int s_rounding = (int)(rounding / _FringeScale);
         if (s_rounding <= 0 || (flags & ImDrawFlags_RoundCornersMask_) == ImDrawFlags_RoundCornersNone)
         {
             PrimReserve(6, 4);
             PrimRect(p_min, p_max, col);
         }
-        else if (s_rounding <= IM_DRAWLIST_TEX_CORNERS_ROUNDING_MAX)
+        else if ((Flags & ImDrawListFlags_RoundCornersUseTex) && s_rounding <= IM_DRAWLIST_TEX_CORNERS_ROUNDING_MAX)
         {
-            ImVec4 tex_uvs = _Data->TexUvCorners[s_rounding - 1];
-            _AddRectFilledBaked(p_min, p_max, col, ImMax(2.f, (float)s_rounding), tex_uvs, flags);
+			IM_ASSERT_PARANOID(!(_Data->Font->OwnerAtlas->Flags & ImFontAtlasFlags_NoBakedRoundCorners));
+            const int size = ImMax(2, s_rounding); // This is matching the baking calculations.
+			const int idx = s_rounding - 1;
+			IM_ASSERT_PARANOID(idx >= 0 && idx < IM_DRAWLIST_TEX_CORNERS_ROUNDING_MAX);
+            ImVec4 tex_uvs = _Data->TexUvCorners[idx];
+            _AddRectFilledBaked(p_min, p_max, col, (float)size * _FringeScale, tex_uvs, flags);
         }
         else
         {
@@ -3908,6 +3914,9 @@ static ImU8 SampleCornerStroke(float x, float y, float cx, float cy, float outer
 
 static void ImFontAtlasBuildUpdateCornersTexData(ImFontAtlas* atlas)
 {
+    if (atlas->Flags & ImFontAtlasFlags_NoBakedRoundCorners)
+        return;
+
     // Pack and store identifier so we can refresh UV coordinates on texture resize.
     ImTextureData* tex = atlas->TexData;
     ImFontAtlasBuilder* builder = atlas->Builder;
