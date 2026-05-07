@@ -10149,7 +10149,7 @@ static void ShowExampleAppCustomRendering(bool* p_open)
                 //draw_list->AddPolyline(concave_shape, IM_COUNTOF(concave_shape), col, ImDrawFlags_Closed, th);
                 draw_list->AddHorizontalLine(x, x + sz, y, col, th, (ImDrawStrokePos)stroke_pos);                                       			x += sz + spacing;  // Horizontal line (note: drawing a filled rectangle will be faster!)
                 draw_list->AddVerticalLine(x, y, y + sz, col, th, (ImDrawStrokePos)stroke_pos);                                       			x += spacing;       // Vertical line (note: drawing a filled rectangle will be faster!)
-                draw_list->AddLine(ImVec2(x, y), ImVec2(x + sz, y + sz), col, th, stroke_flags);                x += sz + spacing;  // Diagonal line
+                draw_list->AddLine(ImVec2(x, y), ImVec2(x + sz, y + sz), col, th, stroke_flags, (ImDrawStrokePos)stroke_pos);                x += sz + spacing;  // Diagonal line
 
                 // Path
                 draw_list->PathArcTo(ImVec2(x + sz*0.5f, y + sz*0.5f), sz*0.5f, 3.141592f * -0.5f, 3.141592f);
@@ -10157,11 +10157,11 @@ static void ShowExampleAppCustomRendering(bool* p_open)
                 x += sz + spacing;
 
                 // Quadratic Bezier Curve (3 control points)
-                draw_list->AddBezierQuadratic(ImVec2(x + cp3[0].x, y + cp3[0].y), ImVec2(x + cp3[1].x, y + cp3[1].y), ImVec2(x + cp3[2].x, y + cp3[2].y), col, th, curve_segments, stroke_flags);
+                draw_list->AddBezierQuadratic(ImVec2(x + cp3[0].x, y + cp3[0].y), ImVec2(x + cp3[1].x, y + cp3[1].y), ImVec2(x + cp3[2].x, y + cp3[2].y), col, th, curve_segments, stroke_flags, (ImDrawStrokePos)stroke_pos);
                 x += sz + spacing;
 
                 // Cubic Bezier Curve (4 control points)
-                draw_list->AddBezierCubic(ImVec2(x + cp4[0].x, y + cp4[0].y), ImVec2(x + cp4[1].x, y + cp4[1].y), ImVec2(x + cp4[2].x, y + cp4[2].y), ImVec2(x + cp4[3].x, y + cp4[3].y), col, th, curve_segments, stroke_flags);
+                draw_list->AddBezierCubic(ImVec2(x + cp4[0].x, y + cp4[0].y), ImVec2(x + cp4[1].x, y + cp4[1].y), ImVec2(x + cp4[2].x, y + cp4[2].y), ImVec2(x + cp4[3].x, y + cp4[3].y), col, th, curve_segments, stroke_flags, (ImDrawStrokePos)stroke_pos);
 
                 x = p.x + 4;
                 y += sz + spacing;

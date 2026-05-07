@@ -1980,13 +1980,13 @@ void ImDrawList::PathRect(const ImVec2& a, const ImVec2& b, float rounding, ImDr
     }
 }
 
-void ImDrawList::AddLine(const ImVec2& p1, const ImVec2& p2, ImU32 col, float thickness, ImDrawFlags flags)
+void ImDrawList::AddLine(const ImVec2& p1, const ImVec2& p2, ImU32 col, float thickness, ImDrawFlags flags, ImDrawStrokePos stroke_pos)
 {
     if ((col & IM_COL32_A_MASK) == 0)
         return;
     PathLineTo(p1);
     PathLineTo(p2);
-    PathStroke(col, flags, thickness);
+    PathStroke(col, flags, thickness, stroke_pos);
 }
 
 void ImDrawList::AddHorizontalLine(float min_x, float max_x, float y, ImU32 col, float thickness, ImDrawStrokePos stroke_pos)
@@ -2452,25 +2452,25 @@ void ImDrawList::AddEllipseFilled(const ImVec2& center, const ImVec2& radius, Im
 }
 
 // Cubic Bezier takes 4 controls points
-void ImDrawList::AddBezierCubic(const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, const ImVec2& p4, ImU32 col, float thickness, int num_segments, ImDrawFlags flags)
+void ImDrawList::AddBezierCubic(const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, const ImVec2& p4, ImU32 col, float thickness, int num_segments, ImDrawFlags flags, ImDrawStrokePos stroke_pos)
 {
     if ((col & IM_COL32_A_MASK) == 0)
         return;
 
     PathLineTo(p1);
     PathBezierCubicCurveTo(p2, p3, p4, num_segments);
-    PathStroke(col, flags, thickness);
+    PathStroke(col, flags, thickness, stroke_pos);
 }
 
 // Quadratic Bezier takes 3 controls points
-void ImDrawList::AddBezierQuadratic(const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, ImU32 col, float thickness, int num_segments, ImDrawFlags flags)
+void ImDrawList::AddBezierQuadratic(const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, ImU32 col, float thickness, int num_segments, ImDrawFlags flags, ImDrawStrokePos stroke_pos)
 {
     if ((col & IM_COL32_A_MASK) == 0)
         return;
 
     PathLineTo(p1);
     PathBezierQuadraticCurveTo(p2, p3, num_segments);
-    PathStroke(col, flags, thickness);
+    PathStroke(col, flags, thickness, stroke_pos);
 }
 
 void ImDrawList::AddText(ImFont* font, float font_size, const ImVec2& pos, ImU32 col, const char* text_begin, const char* text_end, float wrap_width, const ImVec4* cpu_fine_clip_rect)

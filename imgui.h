@@ -3337,7 +3337,7 @@ struct ImDrawList
     //   In older versions (until Dear ImGui 1.77) the AddCircle functions defaulted to num_segments == 12.
     //   In future versions we will use textures to provide cheaper and higher-quality circles.
     //   Use AddNgon() and AddNgonFilled() functions if you need to guarantee a specific number of sides.
-    IMGUI_API void  AddLine(const ImVec2& p1, const ImVec2& p2, ImU32 col, float thickness = 1.0f, ImDrawFlags flags = 0);
+    IMGUI_API void  AddLine(const ImVec2& p1, const ImVec2& p2, ImU32 col, float thickness = 1.0f, ImDrawFlags flags = 0, ImDrawStrokePos stroke_pos = ImDrawStrokePos_Center);
     IMGUI_API void  AddHorizontalLine(float min_x, float max_x, float y, ImU32 col, float thickness = 1.0f, ImDrawStrokePos stroke_pos = ImDrawStrokePos_Inside);
     IMGUI_API void  AddVerticalLine(float x, float min_y, float max_y, ImU32 col, float thickness = 1.0f, ImDrawStrokePos stroke_pos = ImDrawStrokePos_Inside);
     IMGUI_API void  AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding = 0.0f, ImDrawFlags flags = 0, float thickness = 1.0f, ImDrawStrokePos stroke_pos = ImDrawStrokePos_Inside);   // a: upper-left, b: lower-right (== upper-left + size)
@@ -3355,8 +3355,8 @@ struct ImDrawList
     IMGUI_API void  AddEllipseFilled(const ImVec2& center, const ImVec2& radius, ImU32 col, float rot = 0.0f, int num_segments = 0);
     IMGUI_API void  AddText(const ImVec2& pos, ImU32 col, const char* text_begin, const char* text_end = NULL);
     IMGUI_API void  AddText(ImFont* font, float font_size, const ImVec2& pos, ImU32 col, const char* text_begin, const char* text_end = NULL, float wrap_width = 0.0f, const ImVec4* cpu_fine_clip_rect = NULL);
-    IMGUI_API void  AddBezierCubic(const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, const ImVec2& p4, ImU32 col, float thickness, int num_segments = 0, ImDrawFlags flags = 0); // Cubic Bezier (4 control points)
-    IMGUI_API void  AddBezierQuadratic(const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, ImU32 col, float thickness, int num_segments = 0, ImDrawFlags flags = 0);               // Quadratic Bezier (3 control points)
+    IMGUI_API void  AddBezierCubic(const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, const ImVec2& p4, ImU32 col, float thickness, int num_segments = 0, ImDrawFlags flags = 0, ImDrawStrokePos stroke_pos = ImDrawStrokePos_Center); // Cubic Bezier (4 control points)
+    IMGUI_API void  AddBezierQuadratic(const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, ImU32 col, float thickness, int num_segments = 0, ImDrawFlags flags = 0, ImDrawStrokePos stroke_pos = ImDrawStrokePos_Center);               // Quadratic Bezier (3 control points)
 
     // General polygon
     // - Only simple polygons are supported by filling functions (no self-intersections, no holes).
